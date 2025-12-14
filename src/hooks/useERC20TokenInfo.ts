@@ -38,11 +38,40 @@ export const useERC20TokenInfo: UseERC20TokenInfo = (tokenAddress) => {
         return new Promise<ERC20TokensInfos>(async (resolove,reject) => {
             try{
 
-                if(!contract || !account) return;
+                if(!contract || !account) {
+                    reject(new Error('Contract or account not available'));
+                    return;
+                }
     
-                const name = await contract.name();
-                const decimals = new BigNumber((await contract.decimals()).toString()).toString();
-                const symbol = await contract.symbol();
+                // Use callStatic for read-only calls and handle errors gracefully
+                let name: string = '';
+                let symbol: string = '';
+                let decimals: string = '18'; // Default to 18 decimals
+                
+                try {
+                    name = await contract.callStatic.name();
+                } catch (err: any) {
+                    console.warn(`Failed to get name for token ${tokenAddress}:`, err?.message);
+                    // Use address as fallback name
+                    name = `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`;
+                }
+                
+                try {
+                    symbol = await contract.callStatic.symbol();
+                } catch (err: any) {
+                    console.warn(`Failed to get symbol for token ${tokenAddress}:`, err?.message);
+                    // Use address short form as fallback symbol
+                    symbol = tokenAddress.slice(0, 6).toUpperCase();
+                }
+                
+                try {
+                    const decimalsBN = await contract.callStatic.decimals();
+                    decimals = new BigNumber(decimalsBN.toString()).toString();
+                } catch (err: any) {
+                    console.warn(`Failed to get decimals for token ${tokenAddress}:`, err?.message);
+                    // Default to 18 decimals if call fails
+                    decimals = '18';
+                }
 
                 const res = {
                     name,
@@ -53,7 +82,12 @@ export const useERC20TokenInfo: UseERC20TokenInfo = (tokenAddress) => {
                 
             }catch(err){
                 console.log("Failed to get ERC20 token infos: ", err);
-                reject(err);
+                // Return fallback values instead of rejecting
+                resolove({
+                    name: `Token ${tokenAddress ? tokenAddress.slice(0, 6) + '...' + tokenAddress.slice(-4) : 'Unknown'}`,
+                    symbol: tokenAddress ? tokenAddress.slice(0, 6).toUpperCase() : 'UNK',
+                    decimals: '18'
+                });
             }
         })
     }
