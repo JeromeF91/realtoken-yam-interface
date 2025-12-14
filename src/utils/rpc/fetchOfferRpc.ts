@@ -326,26 +326,18 @@ export const fetchOfferRpc = async (
         address: buyer.toLowerCase(),
       } : null,
       price: {
-        // The contract returns: priceBN = total buyerToken amount, amountBN = total offerToken amount
-        // Both are in their respective smallest units (wei)
-        // Price per unit = how many buyerTokens per 1 offerToken
-        // Formula: (priceBN / 10^buyerTokenDecimals) / (amountBN / 10^offerTokenDecimals)
-        // Simplified: (priceBN * 10^offerTokenDecimals) / (amountBN * 10^buyerTokenDecimals)
+        // The contract returns: priceBN = price per token (in buyerToken smallest units), amountBN = total offerToken amount
+        // priceBN is already the price per token, we just need to normalize it by buyerToken decimals
+        // Price per unit = priceBN / 10^buyerTokenDecimals
         price: (() => {
-          // Normalize both to their human-readable units first
-          const priceNormalized = new BigNumber(priceBN.toString()).dividedBy(new BigNumber(10).pow(buyerTokenDecimals));
-          const amountNormalized = new BigNumber(amountBN.toString()).dividedBy(new BigNumber(10).pow(offerTokenDecimals));
-          
-          // Price per unit = normalized price / normalized amount
-          const pricePerUnit = priceNormalized.dividedBy(amountNormalized);
+          // priceBN is already the price per token, just normalize by buyerToken decimals
+          const pricePerUnit = new BigNumber(priceBN.toString()).dividedBy(new BigNumber(10).pow(buyerTokenDecimals));
           
           console.log('Price calculation:', {
             priceBN: priceBN.toString(),
             amountBN: amountBN.toString(),
             offerTokenDecimals,
             buyerTokenDecimals,
-            priceNormalized: priceNormalized.toString(),
-            amountNormalized: amountNormalized.toString(),
             pricePerUnit: pricePerUnit.toString(),
             pricePerUnitFixed: pricePerUnit.toFixed(6),
           });
