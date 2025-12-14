@@ -222,7 +222,7 @@ const ShowOfferPage = () => {
                   </Flex>
                   
                   <Flex justify="space-between">
-                    <Text fw={700}>Seller:</Text>
+                    <Text fw={700}>Token Smart Contract:</Text>
                     <Text style={{ fontFamily: 'monospace', fontSize: '0.9em' }}>
                       {offer.sellerAddress.slice(0, 6)}...{offer.sellerAddress.slice(-4)}
                     </Text>

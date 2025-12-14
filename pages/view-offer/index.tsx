@@ -268,7 +268,7 @@ const ViewOfferPage = () => {
                     value={offer.buyerTokenName}
                   />
                   <OfferText
-                    title={t("sellerAddress")}
+                    title="Token Smart Contract"
                     value={offer.sellerAddress}
                   />
                   {offer.buyerAddress && offer.buyerAddress !== '0x0000000000000000000000000000000000000000' && (
