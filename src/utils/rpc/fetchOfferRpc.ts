@@ -341,13 +341,23 @@ export const fetchOfferRpc = async (
                                    offerTokenName?.toUpperCase().includes('USDC') ||
                                    offerTokenSymbol?.toUpperCase().includes('USDC');
           
-          if (isOfferTokenUSDC) {
-            // If offerToken is USDC, priceBN is in USDC decimals (6)
+          // Check if buyerToken is USDC
+          const isBuyerTokenUSDC = buyerTokenDecimals === 6 || 
+                                   buyerTokenName?.toUpperCase().includes('USDC') ||
+                                   buyerTokenSymbol?.toUpperCase().includes('USDC');
+          
+          // If either token is USDC, priceBN is in USDC decimals (6)
+          if (isOfferTokenUSDC || isBuyerTokenUSDC) {
             decimalsToUse = 6;
-            console.log('Using offerToken decimals (6) for priceBN because offerToken is USDC', {
+            console.log('Using 6 decimals for priceBN because one token is USDC', {
+              isOfferTokenUSDC,
+              isBuyerTokenUSDC,
               offerTokenName,
               offerTokenSymbol,
               offerTokenDecimals,
+              buyerTokenName,
+              buyerTokenSymbol,
+              buyerTokenDecimals,
             });
           } else {
             console.log('Using buyerToken decimals for priceBN', {
@@ -355,13 +365,15 @@ export const fetchOfferRpc = async (
               offerTokenName,
               offerTokenSymbol,
               offerTokenDecimals,
+              buyerTokenName,
+              buyerTokenSymbol,
             });
           }
           
           // priceBN is already the price per token, normalize by the appropriate decimals
           const pricePerUnit = new BigNumber(priceBN.toString()).dividedBy(new BigNumber(10).pow(decimalsToUse));
           
-          console.log('Price calculation:', {
+          console.log('Price calculation result:', {
             priceBN: priceBN.toString(),
             amountBN: amountBN.toString(),
             offerTokenName,
@@ -373,6 +385,7 @@ export const fetchOfferRpc = async (
             decimalsToUse,
             pricePerUnit: pricePerUnit.toString(),
             pricePerUnitFixed: pricePerUnit.toFixed(6),
+            pricePerUnitUSD: pricePerUnit.toFixed(2),
           });
           
           return pricePerUnit.toString();
