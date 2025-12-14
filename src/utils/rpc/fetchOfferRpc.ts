@@ -326,26 +326,31 @@ export const fetchOfferRpc = async (
         address: buyer.toLowerCase(),
       } : null,
       price: {
-        // The contract returns: price = total buyerToken amount, amount = total offerToken amount
+        // The contract returns: priceBN = total buyerToken amount, amountBN = total offerToken amount
         // Both are in their respective smallest units (wei)
-        // Price per unit = (priceBN / amountBN) * (10^offerTokenDecimals / 10^buyerTokenDecimals)
-        // This calculates: how many buyerTokens (with buyerToken decimals) per 1 offerToken (with offerToken decimals)
+        // Price per unit = how many buyerTokens per 1 offerToken
+        // Formula: (priceBN / 10^buyerTokenDecimals) / (amountBN / 10^offerTokenDecimals)
+        // Simplified: (priceBN * 10^offerTokenDecimals) / (amountBN * 10^buyerTokenDecimals)
         price: (() => {
-          const calculatedPrice = new BigNumber(priceBN.toString())
-            .multipliedBy(new BigNumber(10).pow(offerTokenDecimals))
-            .dividedBy(new BigNumber(amountBN.toString()))
-            .dividedBy(new BigNumber(10).pow(buyerTokenDecimals));
+          // Normalize both to their human-readable units first
+          const priceNormalized = new BigNumber(priceBN.toString()).dividedBy(new BigNumber(10).pow(buyerTokenDecimals));
+          const amountNormalized = new BigNumber(amountBN.toString()).dividedBy(new BigNumber(10).pow(offerTokenDecimals));
+          
+          // Price per unit = normalized price / normalized amount
+          const pricePerUnit = priceNormalized.dividedBy(amountNormalized);
           
           console.log('Price calculation:', {
             priceBN: priceBN.toString(),
             amountBN: amountBN.toString(),
             offerTokenDecimals,
             buyerTokenDecimals,
-            calculatedPrice: calculatedPrice.toString(),
-            calculatedPriceFixed: calculatedPrice.toFixed(6),
+            priceNormalized: priceNormalized.toString(),
+            amountNormalized: amountNormalized.toString(),
+            pricePerUnit: pricePerUnit.toString(),
+            pricePerUnitFixed: pricePerUnit.toFixed(6),
           });
           
-          return calculatedPrice.toString();
+          return pricePerUnit.toString();
         })(),
         amount: amountBN.toString(),
       },
