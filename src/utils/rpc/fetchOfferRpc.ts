@@ -327,14 +327,21 @@ export const fetchOfferRpc = async (
       } : null,
       price: {
         // The contract returns: priceBN = price per token
-        // If buyerToken is USDC (6 decimals), priceBN is in USDC decimals
-        // If buyerToken is not USDC, priceBN is in buyerToken decimals
-        // We need to normalize by the appropriate decimals
+        // The price is in the buyerToken's decimals, but if the offerToken is USDC,
+        // the price might be in USDC decimals (6) instead of buyerToken decimals
+        // We need to determine which decimals to use based on the token types
         price: (() => {
-          // Check if buyerToken is likely USDC (6 decimals) or if offerToken is USDC
-          // If buyerToken has 6 decimals, use buyerToken decimals
-          // Otherwise, use buyerToken decimals as default
-          const decimalsToUse = buyerTokenDecimals;
+          // Determine which decimals to use for priceBN
+          // If offerToken is USDC (6 decimals), priceBN is likely in USDC decimals
+          // Otherwise, use buyerToken decimals
+          let decimalsToUse = buyerTokenDecimals;
+          
+          // Check if offerToken is USDC (has 6 decimals)
+          if (offerTokenDecimals === 6) {
+            // If offerToken is USDC, priceBN is likely in USDC decimals (6)
+            decimalsToUse = 6;
+            console.log('Using offerToken decimals (6) for priceBN because offerToken is USDC');
+          }
           
           // priceBN is already the price per token, normalize by the appropriate decimals
           const pricePerUnit = new BigNumber(priceBN.toString()).dividedBy(new BigNumber(10).pow(decimalsToUse));
