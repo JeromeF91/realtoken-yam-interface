@@ -362,11 +362,30 @@ const ViewOfferPage = () => {
               <Grid.Col span={{ base: 12, md: 6 }}>
                 {propertyTokens.length > 0 ? (
                   propertyTokens.map((token) => (
-                    <PropertyCard
-                      key={token.contractAddress}
-                      propertyToken={token}
-                      offer={offer}
-                    />
+                    <Stack gap="md" key={token.contractAddress}>
+                      {/* Display Yield and Original Price */}
+                      <Card withBorder p="md">
+                        <Stack gap="sm">
+                          {token.annualYield !== undefined && (
+                            <Flex justify="space-between" align="center">
+                              <Text fw={700}>Yield:</Text>
+                              <Text>{`${(token.annualYield * 100).toFixed(2)}%`}</Text>
+                            </Flex>
+                          )}
+                          {token.officialPrice !== undefined && (
+                            <Flex justify="space-between" align="center">
+                              <Text fw={700}>Original Token Price:</Text>
+                              <Text>{token.officialPrice} {token.currency || 'USD'}</Text>
+                            </Flex>
+                          )}
+                        </Stack>
+                      </Card>
+                      
+                      <PropertyCard
+                        propertyToken={token}
+                        offer={offer}
+                      />
+                    </Stack>
                   ))
                 ) : (
                   <Card withBorder p="md">
