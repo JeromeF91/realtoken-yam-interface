@@ -34,10 +34,19 @@ export const PropertyCard = ({ propertyToken, offer }: PropertyCardProps) => {
                         { offer ?
                             <OfferDeltaTable 
                                 offer={offer}
-                                offerPrice={offer.offerPrice}
-                                offerYield={offer.offerYield}
+                                offerPrice={offer.offerPrice !== undefined ? offer.offerPrice : (offer.price ? parseFloat(offer.price) : undefined)}
+                                offerYield={offer.offerYield !== undefined ? offer.offerYield : (() => {
+                                    // Calculate yield if not set: (netRentYearPerToken / offerPrice) * 100
+                                    if (propertyToken.netRentYearPerToken && offer.price) {
+                                        const offerPrice = parseFloat(offer.price);
+                                        if (offerPrice > 0) {
+                                            return (propertyToken.netRentYearPerToken / offerPrice) * 100;
+                                        }
+                                    }
+                                    return undefined;
+                                })()}
                                 officialPrice={propertyToken.officialPrice}
-                                officialYield={propertyToken.annualYield ? propertyToken.annualYield*100 : 0}
+                                officialYield={propertyToken.annualYield ? propertyToken.annualYield*100 : undefined}
                             />
                             :
                             <Skeleton height={15}/>
