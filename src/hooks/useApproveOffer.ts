@@ -62,14 +62,21 @@ export const useApproveOffer: UseApproveOffer = (offer, amount) => {
     const checkApproval = async () => {
         if(!buyerToken || !realTokenYamUpgradeable || !account || buyerTokenAmount.isNaN()) return;
         try{
-
-            const allowance = await buyerToken.allowance(account, realTokenYamUpgradeable.address);
+            // Use callStatic for read-only call
+            const allowance = await buyerToken.callStatic.allowance(account, realTokenYamUpgradeable.address);
             console.log("ALLOWANCE: ", allowance.toString());
             console.log("buyerTokenAmount: ", buyerTokenAmount.toString(10));
 
             setApproveNeeded(allowance.lt(buyerTokenAmount.toString(10)));
-        }catch(err){
+        }catch(err: any){
             console.error('Cannot check approval: ', err);
+            // If allowance() is not supported, assume approval is needed
+            // This allows the user to proceed with the transaction
+            // The actual buy transaction will handle the approval check
+            if (err?.code === 'CALL_EXCEPTION' || err?.message?.includes('revert')) {
+                console.warn('Token does not support allowance() function, assuming approval needed');
+                setApproveNeeded(true);
+            }
         }
     }
 
