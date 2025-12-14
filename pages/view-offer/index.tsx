@@ -387,12 +387,12 @@ const ViewOfferPage = () => {
                             );
                           }
                           
-                          // If offerToken is USD/USDC, calculate inverse price
+                          // If offerToken is USD/USDC, the price is already in USD per token
+                          // No need to invert - priceBN is already the USD price
                           if (isOfferTokenUSD && !priceBN.isZero() && priceBN.isFinite()) {
-                            const inversePrice = new BigNumber(1).dividedBy(priceBN);
                             return (
                               <Text>
-                                {`${inversePrice.toFixed(2)} USD`}
+                                {`${priceBN.toFixed(2)} USD`}
                               </Text>
                             );
                           }
