@@ -331,30 +331,22 @@ export const fetchOfferRpc = async (
         // the price might be in USDC decimals (6) instead of buyerToken decimals
         // We need to determine which decimals to use based on the token types
         price: (() => {
-          // Determine which decimals to use for priceBN
-          // If offerToken is USDC (has 6 decimals and name/symbol contains USDC), priceBN is in USDC decimals
-          // Otherwise, use buyerToken decimals
+          // The contract returns priceBN in buyerToken decimals
+          // Since amountBN is also in buyerToken decimals (18), priceBN should be too
+          // But if buyerToken is USDC (6 decimals), use 6 decimals
+          // Otherwise, use buyerToken decimals (usually 18)
           let decimalsToUse = buyerTokenDecimals;
-          
-          // Check if offerToken is USDC by name, symbol, or decimals
-          const isOfferTokenUSDC = offerTokenDecimals === 6 || 
-                                   offerTokenName?.toUpperCase().includes('USDC') ||
-                                   offerTokenSymbol?.toUpperCase().includes('USDC');
           
           // Check if buyerToken is USDC
           const isBuyerTokenUSDC = buyerTokenDecimals === 6 || 
                                    buyerTokenName?.toUpperCase().includes('USDC') ||
                                    buyerTokenSymbol?.toUpperCase().includes('USDC');
           
-          // If either token is USDC, priceBN is in USDC decimals (6)
-          if (isOfferTokenUSDC || isBuyerTokenUSDC) {
+          // If buyerToken is USDC, priceBN is in USDC decimals (6)
+          // Otherwise, priceBN is in buyerToken decimals (usually 18)
+          if (isBuyerTokenUSDC) {
             decimalsToUse = 6;
-            console.log('Using 6 decimals for priceBN because one token is USDC', {
-              isOfferTokenUSDC,
-              isBuyerTokenUSDC,
-              offerTokenName,
-              offerTokenSymbol,
-              offerTokenDecimals,
+            console.log('Using 6 decimals for priceBN because buyerToken is USDC', {
               buyerTokenName,
               buyerTokenSymbol,
               buyerTokenDecimals,
@@ -362,9 +354,6 @@ export const fetchOfferRpc = async (
           } else {
             console.log('Using buyerToken decimals for priceBN', {
               buyerTokenDecimals,
-              offerTokenName,
-              offerTokenSymbol,
-              offerTokenDecimals,
               buyerTokenName,
               buyerTokenSymbol,
             });
