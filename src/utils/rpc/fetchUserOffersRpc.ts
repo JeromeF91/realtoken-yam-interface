@@ -3,7 +3,7 @@ import { Contract } from '@ethersproject/contracts';
 import { utils } from 'ethers';
 import BigNumber from 'bignumber.js';
 import { CHAINS, ChainsID } from '../../constants';
-import { realTokenYamUpgradeableABI, erc20ABI } from '../../abis';
+import { realTokenYamUpgradeableABI, Erc20ABI } from '../../abis';
 import { RealTokenYamUpgradeable } from '../../abis/types/RealTokenYamUpgradeable';
 import { getRpcProvider, getTokenInfo } from './rpcHelpers';
 import { Offer } from '../../types/offer/Offer';
@@ -382,7 +382,7 @@ export const fetchUserOffersRpc = async (
         // Only fetch for RealTokens (type 1) or if we don't know the type yet
         if (!tokenInfo || tokenInfo.tokenType === 1) {
           try {
-            const contract = new Contract(tokenAddress, erc20ABI, provider);
+            const contract = new Contract(tokenAddress, Erc20ABI, provider);
             const [balance, allowance] = await Promise.all([
               contract.balanceOf(seller),
               contract.allowance(seller, yamContractAddress),

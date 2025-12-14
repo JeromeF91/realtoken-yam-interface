@@ -1,7 +1,7 @@
 import { JsonRpcProvider, Network } from '@ethersproject/providers';
 import { Contract } from '@ethersproject/contracts';
 import { CHAINS, ChainsID } from '../../constants';
-import { erc20ABI } from '../../abis';
+import { Erc20ABI } from '../../abis';
 import { Erc20 } from '../../abis/types/Erc20';
 import BigNumber from 'bignumber.js';
 
@@ -31,7 +31,7 @@ export const getERC20Contract = (
   tokenAddress: string,
   provider: JsonRpcProvider
 ): Erc20 => {
-  return new Contract(tokenAddress, erc20ABI, provider) as Erc20;
+  return new Contract(tokenAddress, Erc20ABI, provider) as Erc20;
 };
 
 /**
