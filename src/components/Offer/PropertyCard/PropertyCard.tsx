@@ -17,9 +17,9 @@ export const PropertyCard = ({ propertyToken, offer }: PropertyCardProps) => {
 
     return(
         <Flex className={classes.container}>
-            <Flex className={classes.propertyInfosContainer}>
+            <Flex className={classes.propertyInfosContainer} direction="column">
                 <PropertyImage property={propertyToken}/>
-                <Flex direction={"column"} style={{ width: '100%' }}>
+                <Flex direction={"column"} style={{ width: '100%', marginTop: 'var(--mantine-spacing-md)' }}>
                     <div className={classes.propertyNameContainer}>
                     {   propertyToken ?
                             <Flex className={classes.propertyName} gap={5} align={"center"} onClick={() => openInNewTab(propertyToken.marketplaceLink)}>
@@ -30,7 +30,7 @@ export const PropertyCard = ({ propertyToken, offer }: PropertyCardProps) => {
                             <Skeleton height={25} width={200}/> 
                     }
                     </div>
-                    <Flex direction={"column"} gap={"md"} style={{ marginTop: 'var(--mantine-spacing-xs)' }}>
+                    <Flex direction={"column"} gap={"md"} style={{ marginTop: 'var(--mantine-spacing-md)' }}>
                         { offer ?
                             (() => {
                                 // Calculate offerPrice
