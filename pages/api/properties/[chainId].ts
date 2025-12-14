@@ -9,19 +9,30 @@ import { ChainsID } from '../../../src/constants';
 const getTokenFromCommunityAPI = new Promise<APIPropertiesToken[]>(
   async (resolve, reject) => {
     try {
+      const apiKey = process.env.COMMUNITY_API_KEY ?? '';
+      if (!apiKey) {
+        console.warn('COMMUNITY_API_KEY is not set. API requests may fail.');
+      }
+      
       const response = await axios.get<APIPropertiesToken[]>(
         'https://api.realtoken.community/v1/token',
         {
           headers: {
-            'X-AUTH-REALT-TOKEN': process.env.COMMUNITY_API_KEY ?? '',
+            'X-AUTH-REALT-TOKEN': apiKey,
           },
         }
       );
 
       const tokens: APIPropertiesToken[] = response.data;
+      console.log(`Fetched ${tokens.length} properties from RealToken Community API`);
       resolve(tokens);
-    } catch (err) {
-      console.error('Failed to fetch properties from community');
+    } catch (err: any) {
+      console.error('Failed to fetch properties from community API:', {
+        message: err?.message,
+        status: err?.response?.status,
+        statusText: err?.response?.statusText,
+        data: err?.response?.data,
+      });
       reject(err);
     }
   }
