@@ -145,19 +145,41 @@ const ViewOfferPage = () => {
             }
           }
           
-          // Also try to fetch property using the seller address (which is actually the token address)
+          // Also try to fetch property using the seller address (which is actually the token address/UUID)
+          // This is important because the seller address is the token contract address
           if (fetchedOffer.sellerAddress && fetchedOffer.sellerAddress !== '0x0000000000000000000000000000000000000000') {
             const tokenBySeller = getPropertyToken(fetchedOffer.sellerAddress);
-            if (!tokenBySeller) {
-              // Try fetching from API
-              console.log(`Trying to fetch property from API using seller address: ${fetchedOffer.sellerAddress}`);
+            if (tokenBySeller) {
+              // Found in local cache
+              if (!fetchedPropertyTokens.find(t => t.contractAddress === tokenBySeller.contractAddress)) {
+                fetchedPropertyTokens.push(tokenBySeller);
+                console.log(`Found property in cache using seller address: ${tokenBySeller.shortName}`);
+              }
+            } else {
+              // Try fetching from API using the seller address (token contract address)
+              console.log(`Trying to fetch property from API using seller address (token UUID): ${fetchedOffer.sellerAddress}`);
               const apiToken = await fetchPropertyByAddress(fetchedOffer.sellerAddress, chainId);
               if (apiToken && !fetchedPropertyTokens.find(t => t.contractAddress === apiToken.contractAddress)) {
                 fetchedPropertyTokens.push(apiToken);
-                console.log(`Fetched property from API using seller address: ${apiToken.shortName}`);
+                console.log(`Fetched property from API using seller address: ${apiToken.shortName}`, {
+                  annualYield: apiToken.annualYield,
+                  officialPrice: apiToken.officialPrice,
+                  currency: apiToken.currency,
+                });
+              } else {
+                console.warn(`Could not fetch property from API for address: ${fetchedOffer.sellerAddress}`);
               }
             }
           }
+          
+          console.log(`Total property tokens found: ${fetchedPropertyTokens.length}`, {
+            tokens: fetchedPropertyTokens.map(t => ({
+              shortName: t.shortName,
+              contractAddress: t.contractAddress,
+              annualYield: t.annualYield,
+              officialPrice: t.officialPrice,
+            })),
+          });
           
           setPropertyTokens(fetchedPropertyTokens);
         } else {
