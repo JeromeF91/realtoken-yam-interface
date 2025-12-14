@@ -146,8 +146,17 @@ export const fetchUserOffersRpc = async (
                   amount: amountBN.toString(),
                 });
               }
-            } catch (error) {
-              console.error(`Error fetching offer ${offerId}:`, error);
+            } catch (error: any) {
+              // Skip offers that don't exist or were removed
+              // This is expected - offer IDs might be removed but count might not be updated immediately
+              if (error?.code === 'CALL_EXCEPTION' || 
+                  error?.message?.includes('revert') || 
+                  error?.error?.code === 'CALL_EXCEPTION') {
+                // Silently skip - offer doesn't exist (this is normal)
+                return;
+              }
+              // Log unexpected errors only
+              console.warn(`Unexpected error fetching offer ${offerId}:`, error?.message || error);
             }
           })()
         );
