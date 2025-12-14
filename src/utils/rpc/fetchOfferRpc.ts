@@ -346,6 +346,12 @@ export const fetchOfferRpc = async (
       allowance: offerGraphQl.allowance?.allowance,
       offerTokenDecimals: offerGraphQl.offerToken.decimals,
       buyerTokenDecimals: offerGraphQl.buyerToken.decimals,
+      offerTokenName: offerGraphQl.offerToken.name,
+      offerTokenSymbol: offerGraphQl.offerToken.symbol,
+      // Calculate formatted amounts for debugging
+      availableAmountFormatted: new BigNumber(offerGraphQl.availableAmount)
+        .shiftedBy(-Number(offerGraphQl.offerToken.decimals))
+        .toFixed(6),
     });
 
     const extendedTokensAddress = getExtendedTokens(chainId).map((token) => token.contractAddress);
