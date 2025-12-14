@@ -74,7 +74,12 @@ export const getTokenInfo = async (
 };
 
 /**
- * Get multiple token balances in parallel
+ * Delay function for rate limiting
+ */
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Get multiple token balances in parallel with rate limiting
  */
 export const getTokenBalances = async (
   tokenAddresses: string[],
@@ -83,8 +88,8 @@ export const getTokenBalances = async (
 ): Promise<Record<string, string>> => {
   const balances: Record<string, string> = {};
   
-  // Batch requests in chunks to avoid overwhelming the RPC
-  const chunkSize = 50;
+  // Reduced batch size and added rate limiting
+  const chunkSize = 20;
   for (let i = 0; i < tokenAddresses.length; i += chunkSize) {
     const chunk = tokenAddresses.slice(i, i + chunkSize);
     const promises = chunk.map(async (tokenAddress) => {
@@ -101,13 +106,18 @@ export const getTokenBalances = async (
     results.forEach(({ tokenAddress, balance }) => {
       balances[tokenAddress.toLowerCase()] = balance;
     });
+    
+    // Rate limiting: delay between batches
+    if (i + chunkSize < tokenAddresses.length) {
+      await delay(100);
+    }
   }
   
   return balances;
 };
 
 /**
- * Get multiple token allowances in parallel
+ * Get multiple token allowances in parallel with rate limiting
  */
 export const getTokenAllowances = async (
   tokenAddresses: string[],
@@ -117,8 +127,8 @@ export const getTokenAllowances = async (
 ): Promise<Record<string, string>> => {
   const allowances: Record<string, string> = {};
   
-  // Batch requests in chunks
-  const chunkSize = 50;
+  // Reduced batch size and added rate limiting
+  const chunkSize = 20;
   for (let i = 0; i < tokenAddresses.length; i += chunkSize) {
     const chunk = tokenAddresses.slice(i, i + chunkSize);
     const promises = chunk.map(async (tokenAddress) => {
@@ -140,6 +150,11 @@ export const getTokenAllowances = async (
     results.forEach(({ tokenAddress, allowance }) => {
       allowances[tokenAddress.toLowerCase()] = allowance;
     });
+    
+    // Rate limiting: delay between batches
+    if (i + chunkSize < tokenAddresses.length) {
+      await delay(100);
+    }
   }
   
   return allowances;
