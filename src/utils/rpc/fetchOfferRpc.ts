@@ -114,7 +114,28 @@ export const fetchOfferRpc = async (
     }
     
     // showOffer returns: [seller, offerToken, buyerToken, buyer, price, amount]
+    // Log the raw return values to verify the order
+    console.log('showOffer raw return values:', {
+      value0: offerData[0],
+      value1: offerData[1],
+      value2: offerData[2],
+      value3: offerData[3],
+      value4: offerData[4]?.toString(),
+      value5: offerData[5]?.toString(),
+      allValues: offerData,
+    });
+    
     const [seller, offerTokenAddress, buyerTokenAddress, buyer, priceBN, amountBN] = offerData;
+    
+    // Log the destructured values to verify they're correct
+    console.log('Destructured showOffer values:', {
+      seller,
+      offerTokenAddress,
+      buyerTokenAddress,
+      buyer,
+      priceBN: priceBN?.toString(),
+      amountBN: amountBN?.toString(),
+    });
 
     // Get token info - try tokenInfo first, but fallback to ERC20 if it fails
     // This is critical - if tokenInfo fails, we should still be able to display the offer
@@ -201,6 +222,22 @@ export const fetchOfferRpc = async (
     ]);
 
     // Get balance and allowance
+    // IMPORTANT: seller should be the wallet address, not the token address
+    // Verify that seller is not the same as offerTokenAddress
+    if (seller.toLowerCase() === offerTokenAddress.toLowerCase()) {
+      console.error('ERROR: seller address matches offerTokenAddress! This indicates the return order might be wrong.');
+      console.error('seller:', seller);
+      console.error('offerTokenAddress:', offerTokenAddress);
+      console.error('buyerTokenAddress:', buyerTokenAddress);
+      console.error('buyer:', buyer);
+    }
+    
+    console.log('Fetching balance and allowance for:', {
+      tokenAddress: offerTokenAddress,
+      ownerAddress: seller,
+      spenderAddress: yamContractAddress,
+    });
+    
     const balanceAndAllowance = await getTokenBalanceAndAllowance(
       offerTokenAddress,
       seller,
