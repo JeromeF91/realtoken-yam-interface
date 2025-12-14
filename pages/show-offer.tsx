@@ -262,10 +262,6 @@ const ShowOfferPage = () => {
               </Stack>
             </Card>
           )}
-
-          <Text size="sm" c="dimmed" mt="xl">
-            This website will be discontinued after Dec 31, 2025. Thanks
-          </Text>
         </Stack>
       </Container>
     </ConnectedProvider>
