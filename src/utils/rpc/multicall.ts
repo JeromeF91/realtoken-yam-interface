@@ -92,7 +92,8 @@ export const multicall = async (
       callData: call.callData,
     }));
 
-    const result = await multicallContract.aggregate3(callsWithFailure);
+    // Use callStatic to make it a read-only call (no signer needed)
+    const result = await multicallContract.callStatic.aggregate3(callsWithFailure);
     
     return result.map((r: any) => ({
       success: r.success,
