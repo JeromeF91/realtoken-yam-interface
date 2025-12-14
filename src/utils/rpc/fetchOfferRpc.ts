@@ -330,11 +330,23 @@ export const fetchOfferRpc = async (
         // Both are in their respective smallest units (wei)
         // Price per unit = (priceBN / amountBN) * (10^offerTokenDecimals / 10^buyerTokenDecimals)
         // This calculates: how many buyerTokens (with buyerToken decimals) per 1 offerToken (with offerToken decimals)
-        price: new BigNumber(priceBN.toString())
-          .multipliedBy(new BigNumber(10).pow(offerTokenDecimals))
-          .dividedBy(new BigNumber(amountBN.toString()))
-          .dividedBy(new BigNumber(10).pow(buyerTokenDecimals))
-          .toString(),
+        price: (() => {
+          const calculatedPrice = new BigNumber(priceBN.toString())
+            .multipliedBy(new BigNumber(10).pow(offerTokenDecimals))
+            .dividedBy(new BigNumber(amountBN.toString()))
+            .dividedBy(new BigNumber(10).pow(buyerTokenDecimals));
+          
+          console.log('Price calculation:', {
+            priceBN: priceBN.toString(),
+            amountBN: amountBN.toString(),
+            offerTokenDecimals,
+            buyerTokenDecimals,
+            calculatedPrice: calculatedPrice.toString(),
+            calculatedPriceFixed: calculatedPrice.toFixed(6),
+          });
+          
+          return calculatedPrice.toString();
+        })(),
         amount: amountBN.toString(),
       },
       availableAmount: amountBN.toString(), // Use the full amount from the contract - parseOffer will calculate the actual available amount
