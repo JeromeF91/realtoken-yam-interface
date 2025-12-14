@@ -15,7 +15,8 @@
 .propertyNameContainer {
     display: flex;
     justify-content: start;
-    margin-bottom:  var(--mantine-spacing-sm);
+    margin-bottom: var(--mantine-spacing-md);
+    min-height: 40px; /* Ensure enough space for the property name */
 }
 
 .propertyName {
