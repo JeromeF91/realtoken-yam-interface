@@ -145,12 +145,23 @@ export const fetchOfferRpc = async (
             erc20Info.symbol,
           ];
         } catch (erc20Error: any) {
-          console.error(`Failed to get ERC20 info for ${tokenName} ${tokenAddress}:`, erc20Error);
-          // Last resort: return minimal info
+          console.warn(`Failed to get ERC20 info for ${tokenName} ${tokenAddress} (may not be ERC20 or contract may not exist):`, erc20Error?.message);
+          // Last resort: return minimal info with address as identifier
+          // Try to get tokenType from contract even if ERC20 fails
+          let tokenType = 3; // Default to ERC20
+          try {
+            const tokenTypeBN = await yamContract.callStatic.getTokenType(tokenAddress);
+            tokenType = tokenTypeBN.toNumber();
+          } catch (e) {
+            // If getTokenType also fails, it's likely not a valid token contract
+            console.warn(`Could not get tokenType for ${tokenName}, using default 3`);
+          }
+          // Use address as identifier if we can't get name/symbol
+          const addressShort = `${tokenAddress.substring(0, 6)}...${tokenAddress.substring(38)}`;
           return [
-            { toNumber: () => 3 } as any,
-            'Unknown Token',
-            'UNKNOWN',
+            { toNumber: () => tokenType } as any,
+            `Token ${addressShort}`,
+            addressShort.toUpperCase(),
           ];
         }
       }
@@ -172,10 +183,20 @@ export const fetchOfferRpc = async (
     const [offerTokenType, offerTokenName, offerTokenSymbol] = offerTokenInfo;
     const [buyerTokenType, buyerTokenName, buyerTokenSymbol] = buyerTokenInfo;
 
-    // Get token decimals from ERC20 contracts
+    // Get token decimals from ERC20 contracts (with fallback for non-ERC20 tokens)
     const [offerTokenDecimals, buyerTokenDecimals] = await Promise.all([
-      getTokenInfo(offerTokenAddress, rpcProvider).then(info => info.decimals),
-      getTokenInfo(buyerTokenAddress, rpcProvider).then(info => info.decimals),
+      getTokenInfo(offerTokenAddress, rpcProvider)
+        .then(info => info.decimals)
+        .catch(() => {
+          console.warn(`Could not get decimals for offerToken ${offerTokenAddress}, using default 18`);
+          return 18; // Default to 18 decimals
+        }),
+      getTokenInfo(buyerTokenAddress, rpcProvider)
+        .then(info => info.decimals)
+        .catch(() => {
+          console.warn(`Could not get decimals for buyerToken ${buyerTokenAddress}, using default 18`);
+          return 18; // Default to 18 decimals
+        }),
     ]);
 
     // Get balance and allowance
