@@ -342,39 +342,43 @@ const ViewOfferPage = () => {
                                                   offer.buyerTokenSymbol?.toUpperCase().includes('USDC') ||
                                                   offer.buyerTokenSymbol?.toUpperCase().includes('USD');
                           
-                          // Check if offerToken is USDC
-                          const isOfferTokenUSD = offer.offerTokenName.toUpperCase().includes('USDC') || 
-                                                  offer.offerTokenName.toUpperCase().includes('USD') ||
-                                                  offer.offerTokenSymbol?.toUpperCase().includes('USDC') ||
-                                                  offer.offerTokenSymbol?.toUpperCase().includes('USD');
-                          
                           const priceBN = new BigNumber(offer.price);
                           
                           // If buyerToken is USD/USDC, show price as "X USD per 1 offerToken"
-                          if (isBuyerTokenUSD && !priceBN.isZero()) {
+                          if (isBuyerTokenUSD && !priceBN.isZero() && priceBN.isFinite()) {
+                            // Format with appropriate decimal places based on magnitude
+                            let priceDisplay = priceBN.toFixed(6);
+                            // If price is very small, use scientific notation
+                            if (priceBN.isLessThan(0.000001)) {
+                              priceDisplay = priceBN.toExponential(2);
+                            } else if (priceBN.isLessThan(1)) {
+                              priceDisplay = priceBN.toFixed(6);
+                            } else {
+                              priceDisplay = priceBN.toFixed(2);
+                            }
+                            
                             return (
                               <Text>
-                                {`1 ${offer.offerTokenName} = ${priceBN.toFixed(2)} USD`}
-                              </Text>
-                            );
-                          }
-                          
-                          // If offerToken is USD/USDC, show price as "X offerToken per 1 USD"
-                          if (isOfferTokenUSD && !priceBN.isZero()) {
-                            const inversePrice = new BigNumber(1).dividedBy(priceBN);
-                            return (
-                              <Text>
-                                {`1 ${offer.buyerTokenName} = ${inversePrice.toFixed(2)} USD`}
+                                {`1 ${offer.offerTokenName} = ${priceDisplay} USD`}
                               </Text>
                             );
                           }
                           
                           // Fallback: show both directions if price is valid
                           if (!priceBN.isZero() && !priceBN.isNaN() && priceBN.isFinite()) {
+                            let priceDisplay = priceBN.toFixed(6);
+                            if (priceBN.isLessThan(0.000001)) {
+                              priceDisplay = priceBN.toExponential(2);
+                            } else if (priceBN.isLessThan(1)) {
+                              priceDisplay = priceBN.toFixed(6);
+                            } else {
+                              priceDisplay = priceBN.toFixed(4);
+                            }
+                            
                             return (
                               <Stack gap={2}>
                                 <Text>
-                                  {`1 ${offer.offerTokenName} = ${priceBN.toFixed(4)} ${offer.buyerTokenName}`}
+                                  {`1 ${offer.offerTokenName} = ${priceDisplay} ${offer.buyerTokenName}`}
                                 </Text>
                                 <Text c="dimmed" size="sm">
                                   {`1 ${offer.buyerTokenName} = ${new BigNumber(1).dividedBy(priceBN).toFixed(4)} ${offer.offerTokenName}`}
