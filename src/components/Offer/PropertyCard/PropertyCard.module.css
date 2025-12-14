@@ -4,12 +4,14 @@
 
 .propertyInfosContainer {
     display: flex;
+    flex-direction: column;
     border-style: solid;
     border-width: 3px;
     border-color: var(--mantine-color-brand-9);
     border-radius: var(--mantine-radius-md);
     padding: var(--mantine-radius-lg);
     gap: var(--mantine-spacing-md);
+    width: 100%;
 }
 
 .propertyNameContainer {
