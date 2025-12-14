@@ -208,18 +208,31 @@ export const fetchOfferRpc = async (
     // Get token decimals from ERC20 contracts (with fallback for non-ERC20 tokens)
     const [offerTokenDecimals, buyerTokenDecimals] = await Promise.all([
       getTokenInfo(offerTokenAddress, rpcProvider)
-        .then(info => info.decimals)
-        .catch(() => {
-          console.warn(`Could not get decimals for offerToken ${offerTokenAddress}, using default 18`);
+        .then(info => {
+          console.log(`Fetched decimals for offerToken ${offerTokenAddress}: ${info.decimals}`);
+          return info.decimals;
+        })
+        .catch((error) => {
+          console.warn(`Could not get decimals for offerToken ${offerTokenAddress}, using default 18:`, error?.message);
           return 18; // Default to 18 decimals
         }),
       getTokenInfo(buyerTokenAddress, rpcProvider)
-        .then(info => info.decimals)
-        .catch(() => {
-          console.warn(`Could not get decimals for buyerToken ${buyerTokenAddress}, using default 18`);
+        .then(info => {
+          console.log(`Fetched decimals for buyerToken ${buyerTokenAddress}: ${info.decimals}`);
+          return info.decimals;
+        })
+        .catch((error) => {
+          console.warn(`Could not get decimals for buyerToken ${buyerTokenAddress}, using default 18:`, error?.message);
           return 18; // Default to 18 decimals
         }),
     ]);
+    
+    console.log('Token decimals:', {
+      offerTokenAddress,
+      offerTokenDecimals,
+      buyerTokenAddress,
+      buyerTokenDecimals,
+    });
 
     // Get balance and allowance
     // IMPORTANT: seller should be the wallet address, not the token address
