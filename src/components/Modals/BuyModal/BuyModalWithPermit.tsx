@@ -201,10 +201,7 @@ export const BuyModalWithPermit: FC<
 
         <Divider />
 
-        <WalletERC20Balance 
-          tokenAddress={offer.buyerTokenAddress}
-          tokenDecimals={offer.buyerTokenDecimals}
-        />
+        <WalletERC20Balance />
 
         <Flex direction={"column"} gap={"sm"} >
           <Text size={"xl"}>{t1("sell")}</Text>
