@@ -11,6 +11,30 @@ let redisClient: any = null;
 const isServer = typeof window === 'undefined';
 
 /**
+ * Lazy load ioredis only when needed (server-side only)
+ * Using eval to prevent webpack from analyzing the require
+ */
+const loadRedis = async (): Promise<any> => {
+  if (!isServer) {
+    return null;
+  }
+
+  if (!Redis) {
+    try {
+      // Use eval('require') to prevent webpack from analyzing the import
+      // This prevents Next.js from trying to bundle ioredis for the client
+      const requireFunc = eval('require');
+      const ioredisModule = requireFunc('ioredis');
+      Redis = ioredisModule.default || ioredisModule;
+    } catch (error) {
+      console.error('Failed to load ioredis:', error);
+      return null;
+    }
+  }
+  return Redis;
+};
+
+/**
  * Get or create Redis client (server-side only)
  */
 export const getRedisClient = async (): Promise<any> => {
@@ -19,14 +43,9 @@ export const getRedisClient = async (): Promise<any> => {
     return null;
   }
 
-  if (!Redis) {
-    try {
-      // Dynamic import to prevent bundling for client
-      Redis = (await import('ioredis')).default;
-    } catch (error) {
-      console.error('Failed to import ioredis:', error);
-      return null;
-    }
+  const RedisClass = await loadRedis();
+  if (!RedisClass) {
+    return null;
   }
 
   if (!redisClient) {
@@ -35,7 +54,7 @@ export const getRedisClient = async (): Promise<any> => {
         (process.env.REDIS_HOST && process.env.REDIS_PORT 
           ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`
           : 'redis://192.168.1.113:6379');
-      redisClient = new Redis(redisUrl, {
+      redisClient = new RedisClass(redisUrl, {
         retryStrategy: (times: number) => {
           // Retry with exponential backoff, max 3 retries
           if (times > 3) {

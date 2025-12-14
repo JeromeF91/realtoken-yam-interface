@@ -6,6 +6,8 @@ const nextConfig = {
   experimental: {
     outputStandalone: true,
   },
+  // Mark ioredis as external for server-side only
+  serverComponentsExternalPackages: ['ioredis'],
   webpack: (config, { isServer }) => {
     // Fix for Node.js 24 compatibility
     if (isServer) {
@@ -15,6 +17,29 @@ const nextConfig = {
         net: false,
         tls: false,
       };
+    } else {
+      // Exclude Node.js modules from client bundle
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        dns: false,
+        child_process: false,
+        crypto: false,
+      };
+      
+      // Exclude ioredis from client bundle - use alias to prevent bundling
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'ioredis': false,
+      };
+      
+      // Also add to externals to prevent webpack from trying to bundle it
+      config.externals = config.externals || [];
+      if (Array.isArray(config.externals)) {
+        config.externals.push('ioredis');
+      }
     }
     return config;
   },
