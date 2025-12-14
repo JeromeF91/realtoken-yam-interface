@@ -31,6 +31,8 @@ import { Offer } from 'src/types/offer/Offer';
 import { PropertyCard } from 'src/components/Offer/PropertyCard/PropertyCard';
 import { BuyActionsWithPermit } from 'src/components/Market/BuyActions/BuyActionsWithPermit';
 import { OfferText } from 'src/components/Offer/OfferText';
+import { fetchPropertyByAddress } from 'src/utils/api/fetchPropertyByAddress';
+import { PropertiesToken } from 'src/types/PropertiesToken';
 
 const ViewOfferPage = () => {
   const router = useRouter();
@@ -110,15 +112,53 @@ const ViewOfferPage = () => {
           setError(null);
           
           // Fetch property tokens for the offer
-          const fetchedPropertyTokens = [];
+          const fetchedPropertyTokens: PropertiesToken[] = [];
+          
+          // First, try to get from local properties cache
           if (fetchedOffer.buyerTokenType === 1) {
             const token = getPropertyToken(fetchedOffer.buyerTokenAddress);
-            if (token) fetchedPropertyTokens.push(token);
+            if (token) {
+              fetchedPropertyTokens.push(token);
+            } else {
+              // If not found locally, try fetching from API using the address
+              console.log(`Property not found locally for buyerToken ${fetchedOffer.buyerTokenAddress}, fetching from API...`);
+              const apiToken = await fetchPropertyByAddress(fetchedOffer.buyerTokenAddress, chainId);
+              if (apiToken) {
+                fetchedPropertyTokens.push(apiToken);
+                console.log(`Fetched property from API: ${apiToken.shortName}`);
+              }
+            }
           }
+          
           if (fetchedOffer.offerTokenType === 1) {
             const token = getPropertyToken(fetchedOffer.offerTokenAddress);
-            if (token) fetchedPropertyTokens.push(token);
+            if (token) {
+              fetchedPropertyTokens.push(token);
+            } else {
+              // If not found locally, try fetching from API using the address
+              console.log(`Property not found locally for offerToken ${fetchedOffer.offerTokenAddress}, fetching from API...`);
+              const apiToken = await fetchPropertyByAddress(fetchedOffer.offerTokenAddress, chainId);
+              if (apiToken) {
+                fetchedPropertyTokens.push(apiToken);
+                console.log(`Fetched property from API: ${apiToken.shortName}`);
+              }
+            }
           }
+          
+          // Also try to fetch property using the seller address (which is actually the token address)
+          if (fetchedOffer.sellerAddress && fetchedOffer.sellerAddress !== '0x0000000000000000000000000000000000000000') {
+            const tokenBySeller = getPropertyToken(fetchedOffer.sellerAddress);
+            if (!tokenBySeller) {
+              // Try fetching from API
+              console.log(`Trying to fetch property from API using seller address: ${fetchedOffer.sellerAddress}`);
+              const apiToken = await fetchPropertyByAddress(fetchedOffer.sellerAddress, chainId);
+              if (apiToken && !fetchedPropertyTokens.find(t => t.contractAddress === apiToken.contractAddress)) {
+                fetchedPropertyTokens.push(apiToken);
+                console.log(`Fetched property from API using seller address: ${apiToken.shortName}`);
+              }
+            }
+          }
+          
           setPropertyTokens(fetchedPropertyTokens);
         } else {
           setError('Offer not found. Please check the offer ID.');
