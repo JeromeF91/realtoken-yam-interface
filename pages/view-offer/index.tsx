@@ -15,6 +15,9 @@ import {
   Group,
   Paper,
   Title,
+  Badge,
+  Grid,
+  Box,
 } from '@mantine/core';
 import { IconSearch, IconAlertCircle, IconInfoCircle } from '@tabler/icons';
 import { useTranslation } from 'react-i18next';
