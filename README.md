@@ -84,7 +84,7 @@ The default value is `dev`;
 
 ### Node.js version
 
-<strong>📣 Node.js needed version is `v18.12.1`</strong>
+<strong>📣 Node.js needed version is `v24.12.0`</strong>
 
 ## Installation
 
