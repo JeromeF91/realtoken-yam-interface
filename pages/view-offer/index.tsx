@@ -70,6 +70,15 @@ const ViewOfferPage = () => {
       setError(null);
 
       try {
+        // Log chainId for debugging
+        console.log('Fetching offer with chainId:', chainId, 'offerId:', id);
+        
+        if (!chainId) {
+          setError('No chain ID detected. Please connect your wallet and switch to the correct network.');
+          setIsLoading(false);
+          return;
+        }
+        
         const fetchedOffer = await fetchOfferRpc(
           provider,
           account,

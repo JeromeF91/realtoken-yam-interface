@@ -24,11 +24,39 @@ export const fetchOfferRpc = async (
   prices: Price
 ): Promise<Offer | undefined> => {
   try {
-    // Always use JsonRpcProvider for read-only calls to avoid signer issues
-    const rpcProvider = getRpcProvider(chainId);
+    // Validate chainId - ensure it's a valid ChainsID
+    // ChainsID enum values: Ethereum = 0x01 (1), Gnosis = 0x64 (100), Sepolia = 0xaa36a7 (11155111)
+    const validChainIds = [ChainsID.Ethereum, ChainsID.Gnosis, ChainsID.Sepolia];
+    const chainIdNumber = typeof chainId === 'string' ? parseInt(chainId, 10) : chainId;
     
-    const chainConfig = CHAINS[chainId as ChainsID];
+    if (!chainIdNumber || !validChainIds.includes(chainIdNumber as ChainsID)) {
+      console.error(`Invalid or unsupported chainId: ${chainId} (as number: ${chainIdNumber}). Valid chainIds are:`, validChainIds.map(id => `${id} (0x${id.toString(16)})`));
+      throw new Error(`Unsupported chainId: ${chainId}. Please switch to a supported chain (Gnosis=100 or Ethereum=1).`);
+    }
+    
+    // Use the numeric chainId
+    const finalChainId = chainIdNumber;
+    
+    // Always use JsonRpcProvider for read-only calls to avoid signer issues
+    const rpcProvider = getRpcProvider(finalChainId);
+    
+    const chainConfig = CHAINS[finalChainId as ChainsID];
+    if (!chainConfig) {
+      throw new Error(`Chain configuration not found for chainId: ${finalChainId}`);
+    }
+    
     const { address: yamContractAddress } = chainConfig.contracts.realTokenYamUpgradeable;
+    console.log(`Fetching offer ${offerId} on chain ${finalChainId} (${chainConfig.chainName}) using RPC: ${chainConfig.rpcUrl}, contract: ${yamContractAddress}`);
+    
+    // Verify the provider's network matches
+    try {
+      const providerNetwork = await rpcProvider.getNetwork();
+      if (providerNetwork.chainId !== finalChainId) {
+        console.warn(`Provider network chainId (${providerNetwork.chainId}) doesn't match requested chainId (${finalChainId})`);
+      }
+    } catch (networkError) {
+      console.warn('Could not verify provider network:', networkError);
+    }
 
     // Get YAM contract instance
     const yamContract = new Contract(
