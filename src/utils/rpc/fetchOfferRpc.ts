@@ -112,43 +112,63 @@ export const fetchOfferRpc = async (
     // showOffer returns: [seller, offerToken, buyerToken, buyer, price, amount]
     const [seller, offerTokenAddress, buyerTokenAddress, buyer, priceBN, amountBN] = offerData;
 
-    // Get token info - try tokenInfo first, but fallback to ERC20 if it fails
-    // This matches how Telegram bots typically handle it - simpler approach
+    // Get token info for both tokens using callStatic for read-only calls
+    // Handle errors in case tokenInfo fails for a token (e.g., token not whitelisted)
     let offerTokenInfo, buyerTokenInfo;
-    
-    // Helper function to get token info with fallback
-    const getTokenInfoWithFallback = async (tokenAddress: string, tokenName: string) => {
+    try {
+      [offerTokenInfo, buyerTokenInfo] = await Promise.all([
+        yamContract.callStatic.tokenInfo(offerTokenAddress),
+        yamContract.callStatic.tokenInfo(buyerTokenAddress),
+      ]);
+    } catch (tokenInfoError: any) {
+      console.warn(`tokenInfo failed, trying individually. Error:`, tokenInfoError);
+      // Try to get token info individually to see which one fails
       try {
-        // Try tokenInfo first (works for whitelisted tokens)
-        const info = await yamContract.callStatic.tokenInfo(tokenAddress);
-        console.log(`Successfully fetched ${tokenName} via tokenInfo`);
-        return info;
-      } catch (error: any) {
-        console.warn(`tokenInfo failed for ${tokenName} ${tokenAddress}, using ERC20 fallback:`, error?.message);
+        offerTokenInfo = await yamContract.callStatic.tokenInfo(offerTokenAddress);
+        console.log(`Successfully fetched offerTokenInfo:`, offerTokenInfo);
+      } catch (offerTokenError: any) {
+        console.warn(`tokenInfo failed for offerToken ${offerTokenAddress}, using fallback. Error:`, offerTokenError);
         // Fallback: get token info directly from ERC20 contract
-        const erc20Info = await getTokenInfo(tokenAddress, rpcProvider);
-        // Try to get tokenType from contract
+        const offerTokenERC20Info = await getTokenInfo(offerTokenAddress, rpcProvider);
+        // tokenInfo format: [tokenType, name, symbol]
+        // We'll use tokenType 3 (ERC20) as fallback, or try to get it from the contract
         let tokenType = 3; // Default to ERC20
         try {
-          const tokenTypeBN = await yamContract.callStatic.getTokenType(tokenAddress);
+          // Try to get tokenType from contract if possible
+          const tokenTypeBN = await yamContract.callStatic.getTokenType(offerTokenAddress);
           tokenType = tokenTypeBN.toNumber();
         } catch (e) {
-          console.warn(`Could not get tokenType for ${tokenName}, using default 3`);
+          console.warn('Could not get tokenType, using default 3');
         }
-        // Return in tokenInfo format: [tokenType, name, symbol]
-        return [
+        offerTokenInfo = [
           { toNumber: () => tokenType } as any,
-          erc20Info.name,
-          erc20Info.symbol,
+          offerTokenERC20Info.name,
+          offerTokenERC20Info.symbol,
         ];
       }
-    };
-    
-    // Fetch both token infos in parallel with fallback handling
-    [offerTokenInfo, buyerTokenInfo] = await Promise.all([
-      getTokenInfoWithFallback(offerTokenAddress, 'offerToken'),
-      getTokenInfoWithFallback(buyerTokenAddress, 'buyerToken'),
-    ]);
+      
+      try {
+        buyerTokenInfo = await yamContract.callStatic.tokenInfo(buyerTokenAddress);
+        console.log(`Successfully fetched buyerTokenInfo:`, buyerTokenInfo);
+      } catch (buyerTokenError: any) {
+        console.warn(`tokenInfo failed for buyerToken ${buyerTokenAddress}, using fallback. Error:`, buyerTokenError);
+        // Fallback: get token info directly from ERC20 contract
+        const buyerTokenERC20Info = await getTokenInfo(buyerTokenAddress, rpcProvider);
+        // tokenInfo format: [tokenType, name, symbol]
+        let tokenType = 3; // Default to ERC20
+        try {
+          const tokenTypeBN = await yamContract.callStatic.getTokenType(buyerTokenAddress);
+          tokenType = tokenTypeBN.toNumber();
+        } catch (e) {
+          console.warn('Could not get tokenType, using default 3');
+        }
+        buyerTokenInfo = [
+          { toNumber: () => tokenType } as any,
+          buyerTokenERC20Info.name,
+          buyerTokenERC20Info.symbol,
+        ];
+      }
+    }
 
     // tokenInfo returns: [tokenType, name, symbol]
     const [offerTokenType, offerTokenName, offerTokenSymbol] = offerTokenInfo;
