@@ -65,17 +65,44 @@ export const fetchOfferRpc = async (
       rpcProvider
     ) as RealTokenYamUpgradeable;
 
+    // Check total offer count first to validate the offer ID
+    try {
+      const offerCountBN = await yamContract.callStatic.getOfferCount();
+      const offerCount = offerCountBN.toNumber();
+      console.log(`Total offers on chain ${finalChainId}: ${offerCount}`);
+      
+      if (offerId >= offerCount) {
+        console.warn(`Offer ID ${offerId} is out of range. Total offers: ${offerCount}`);
+        throw new Error(`Offer ID ${offerId} is out of range. There are only ${offerCount} offers on this chain.`);
+      }
+    } catch (countError: any) {
+      // If getOfferCount fails, log but continue (might be a network issue)
+      console.warn('Could not get offer count:', countError);
+    }
+
     // Fetch offer data from contract using callStatic to ensure it's a read-only call
     let offerData;
     try {
+      console.log(`Attempting to call showOffer(${offerId}) on contract ${yamContractAddress}...`);
       offerData = await yamContract.callStatic.showOffer(offerId);
+      console.log(`Successfully fetched offer ${offerId}:`, offerData);
     } catch (error: any) {
+      console.error(`Error calling showOffer(${offerId}):`, {
+        code: error?.code,
+        message: error?.message,
+        error: error?.error,
+        data: error?.data,
+        transaction: error?.transaction,
+      });
+      
       // Handle call revert exceptions (e.g., offer doesn't exist or was removed)
       if (error?.code === 'CALL_EXCEPTION' || 
           error?.message?.includes('revert') || 
           error?.error?.code === 'CALL_EXCEPTION' ||
-          error?.error?.code === -32000) {
-        console.warn(`Offer ${offerId} does not exist or was removed.`);
+          error?.error?.code === -32000 ||
+          error?.error?.message?.includes('execution reverted')) {
+        console.warn(`Offer ${offerId} does not exist or was removed on chain ${finalChainId} (${chainConfig.chainName}).`);
+        console.warn(`Contract address: ${yamContractAddress}, RPC: ${chainConfig.rpcUrl}`);
         return undefined;
       }
       // Re-throw unexpected errors

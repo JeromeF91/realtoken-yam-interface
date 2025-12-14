@@ -89,7 +89,7 @@ const ShowOfferPage = () => {
           setOffer(fetchedOffer);
           setError(null);
         } else {
-          setError('Offer not found. Please check the offer ID.');
+          setError(`Offer ${id} not found on ${chainName} (chainId: ${chainId}). Please check the offer ID and ensure you're connected to the correct network.`);
           setOffer(undefined);
         }
       } catch (err: any) {
