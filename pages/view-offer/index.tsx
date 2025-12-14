@@ -443,62 +443,29 @@ const ViewOfferPage = () => {
                     });
                     
                     return (
-                      <Stack gap="md" key={token.contractAddress}>
-                        {/* Display Yield and Original Price */}
-                        <Card withBorder p="md">
-                          <Stack gap="sm">
-                            <Flex justify="space-between" align="center">
-                              <Text fw={700}>Yield:</Text>
-                              <Text>
-                                {token.annualYield !== undefined && token.annualYield !== null
-                                  ? `${(token.annualYield * 100).toFixed(2)}%`
-                                  : 'N/A'}
-                              </Text>
-                            </Flex>
-                            <Flex justify="space-between" align="center">
-                              <Text fw={700}>New Yield:</Text>
-                              <Text>
-                                {(() => {
-                                  // Calculate new yield based on offer price
-                                  // Formula: (netRentYearPerToken / offerPrice) * 100
-                                  if (token.netRentYearPerToken && offer.price) {
-                                    const offerPriceBN = new BigNumber(offer.price);
-                                    if (!offerPriceBN.isZero() && offerPriceBN.isFinite()) {
-                                      const netRentBN = new BigNumber(token.netRentYearPerToken);
-                                      const newYield = netRentBN.dividedBy(offerPriceBN).multipliedBy(100);
-                                      console.log('New yield calculation:', {
-                                        netRentYearPerToken: token.netRentYearPerToken,
-                                        offerPrice: offer.price,
-                                        newYield: newYield.toString(),
-                                        offerYield: offer.offerYield,
-                                      });
-                                      return `${newYield.toFixed(2)}%`;
-                                    }
-                                  }
-                                  // Fallback to offer.offerYield if available
-                                  if (offer.offerYield !== undefined && offer.offerYield !== null && offer.offerYield > 0) {
-                                    return `${offer.offerYield.toFixed(2)}%`;
-                                  }
-                                  return 'N/A';
-                                })()}
-                              </Text>
-                            </Flex>
-                            <Flex justify="space-between" align="center">
-                              <Text fw={700}>Original Token Price:</Text>
-                              <Text>
-                                {token.officialPrice !== undefined && token.officialPrice !== null
-                                  ? `${token.officialPrice} ${token.currency || 'USD'}`
-                                  : 'N/A'}
-                              </Text>
-                            </Flex>
-                          </Stack>
-                        </Card>
-                        
-                        <PropertyCard
-                          propertyToken={token}
-                          offer={offer}
-                        />
-                      </Stack>
+                      <PropertyCard
+                        key={token.contractAddress}
+                        propertyToken={token}
+                        offer={{
+                          ...offer,
+                          // Ensure offerPrice and offerYield are set for the comparison table
+                          offerPrice: offer.offerPrice || (offer.price ? parseFloat(offer.price) : undefined),
+                          offerYield: (() => {
+                            // Calculate new yield based on offer price
+                            // Formula: (netRentYearPerToken / offerPrice) * 100
+                            if (token.netRentYearPerToken && offer.price) {
+                              const offerPriceBN = new BigNumber(offer.price);
+                              if (!offerPriceBN.isZero() && offerPriceBN.isFinite()) {
+                                const netRentBN = new BigNumber(token.netRentYearPerToken);
+                                const newYield = netRentBN.dividedBy(offerPriceBN).multipliedBy(100);
+                                return parseFloat(newYield.toString());
+                              }
+                            }
+                            // Fallback to offer.offerYield if available
+                            return offer.offerYield || undefined;
+                          })(),
+                        }}
+                      />
                     );
                   })
                 ) : (
