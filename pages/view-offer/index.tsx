@@ -288,11 +288,11 @@ const ViewOfferPage = () => {
                     {offer.offerTokenName && offer.buyerTokenName && offer.price ? (
                       <>
                         <Text>
-                          {`1 ${offer.offerTokenName} = ${new BigNumber(offer.price).shiftedBy(-Number(offer.buyerTokenDecimals || 18)).toFixed(2)} ${offer.buyerTokenName}`}
+                          {`1 ${offer.offerTokenName} = ${new BigNumber(offer.price).toFixed(6)} ${offer.buyerTokenName}`}
                           {offer.offerPrice && ` ($${parseFloat(offer.offerPrice.toString()).toFixed(2)})`}
                         </Text>
                         <Text>
-                          {`1 ${offer.buyerTokenName} = ${new BigNumber(1).dividedBy(new BigNumber(offer.price).shiftedBy(-Number(offer.buyerTokenDecimals || 18))).toFixed(5)} ${offer.offerTokenName}`}
+                          {`1 ${offer.buyerTokenName} = ${new BigNumber(1).dividedBy(offer.price).toFixed(6)} ${offer.offerTokenName}`}
                         </Text>
                       </>
                     ) : (
@@ -314,19 +314,15 @@ const ViewOfferPage = () => {
                     />
                   )}
 
-                  {offer.balanceWallet && (
-                    <OfferText
-                      title="Seller Balance"
-                      value={offer.balanceWallet}
-                    />
-                  )}
+                  <OfferText
+                    title="Seller Balance"
+                    value={new BigNumber(offer.balanceWallet || '0').shiftedBy(-Number(offer.offerTokenDecimals || 18)).toFixed(6)}
+                  />
 
-                  {offer.allowanceToken && (
-                    <OfferText
-                      title="Seller Allowance"
-                      value={offer.allowanceToken}
-                    />
-                  )}
+                  <OfferText
+                    title="Seller Allowance"
+                    value={new BigNumber(offer.allowanceToken || '0').shiftedBy(-Number(offer.offerTokenDecimals || 18)).toFixed(6)}
+                  />
 
                   {offer.createdAtTimestamp > 0 && (
                     <OfferText

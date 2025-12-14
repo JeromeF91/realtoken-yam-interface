@@ -10,6 +10,7 @@ import { Price } from '../../types/price';
 import { DataRealtokenType } from '../../types/offer/DataRealTokenType';
 import { parseOffer } from '../offers/parseOffer';
 import { getExtendedTokens } from '../../constants/GetPriceToken';
+import BigNumber from 'bignumber.js';
 
 /**
  * Fetch a single offer using RPC calls instead of TheGraph
@@ -253,7 +254,15 @@ export const fetchOfferRpc = async (
         address: buyer.toLowerCase(),
       } : null,
       price: {
-        price: priceBN.toString(),
+        // The contract returns: price = total buyerToken amount, amount = total offerToken amount
+        // Both are in their respective smallest units (wei)
+        // Price per unit = (priceBN / amountBN) * (10^offerTokenDecimals / 10^buyerTokenDecimals)
+        // This calculates: how many buyerTokens (with buyerToken decimals) per 1 offerToken (with offerToken decimals)
+        price: new BigNumber(priceBN.toString())
+          .multipliedBy(new BigNumber(10).pow(offerTokenDecimals))
+          .dividedBy(new BigNumber(amountBN.toString()))
+          .dividedBy(new BigNumber(10).pow(buyerTokenDecimals))
+          .toString(),
         amount: amountBN.toString(),
       },
       availableAmount: amountBN.toString(), // Use the full amount from the contract - parseOffer will calculate the actual available amount
