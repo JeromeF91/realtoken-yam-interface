@@ -11,24 +11,27 @@ interface OfferDeltaTableProps{
 }
 export const OfferDeltaTable = ({ offer, officialPrice, officialYield, offerPrice, offerYield }: OfferDeltaTableProps) => {
 
+    // Always show Offer column if we have offerPrice or offerYield
+    const showOfferColumn = offerPrice !== undefined || offerYield !== undefined;
+    
     return(
         <table className={classes.table}>
             <thead className={classes.tableHead}>
                 <tr>
                     <th className={classes.tableCell}></th>
                     <th className={classes.tableCell}>Original</th>
-                    { offer.type !== OFFER_TYPE.EXCHANGE ? <th className={classes.tableCell}>Offer</th> : undefined }
+                    { showOfferColumn ? <th className={classes.tableCell}>Offer</th> : undefined }
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td className={classes.tableCell}>Yield</td>
                     <td className={classes.tableCell}>
-                        { officialYield ? `${officialYield.toFixed(2)}%` : <Skeleton height={15}/> }
+                        { officialYield !== undefined ? `${officialYield.toFixed(2)}%` : <Skeleton height={15}/> }
                     </td>
-                    { offer.type !== OFFER_TYPE.EXCHANGE ? 
+                    { showOfferColumn ? 
                         <td className={classes.tableCell}>
-                            { offerYield ? <Text>{`${offerYield.toFixed(2)}%`}</Text> : <Skeleton height={15}/> }
+                            { offerYield !== undefined ? <Text>{`${offerYield.toFixed(2)}%`}</Text> : <Skeleton height={15}/> }
                         </td> 
                         : 
                         undefined 
@@ -37,12 +40,12 @@ export const OfferDeltaTable = ({ offer, officialPrice, officialYield, offerPric
                 <tr>
                     <td className={classes.tableCell}>Price</td>
                     <td className={classes.tableCell}>
-                        { officialPrice ? officialPrice : <Skeleton height={15}/> }
+                        { officialPrice !== undefined ? `${officialPrice.toFixed(2)}` : <Skeleton height={15}/> }
                     </td>
-                    { offer.type !== OFFER_TYPE.EXCHANGE ? 
+                    { showOfferColumn ? 
                         <td className={classes.tableCell}>
                             { offerPrice !== undefined ? 
-                                `${offerPrice}` 
+                                `${offerPrice.toFixed(2)}` 
                                 : 
                                 <Skeleton height={15}/>
                             }
