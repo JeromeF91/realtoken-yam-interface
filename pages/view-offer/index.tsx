@@ -361,35 +361,63 @@ const ViewOfferPage = () => {
               {/* Right Column - Property Card */}
               <Grid.Col span={{ base: 12, md: 6 }}>
                 {propertyTokens.length > 0 ? (
-                  propertyTokens.map((token) => (
-                    <Stack gap="md" key={token.contractAddress}>
-                      {/* Display Yield and Original Price */}
-                      <Card withBorder p="md">
-                        <Stack gap="sm">
-                          {token.annualYield !== undefined && (
+                  propertyTokens.map((token) => {
+                    console.log('Property token data:', {
+                      shortName: token.shortName,
+                      annualYield: token.annualYield,
+                      officialPrice: token.officialPrice,
+                      currency: token.currency,
+                      contractAddress: token.contractAddress,
+                    });
+                    
+                    return (
+                      <Stack gap="md" key={token.contractAddress}>
+                        {/* Display Yield and Original Price */}
+                        <Card withBorder p="md">
+                          <Stack gap="sm">
                             <Flex justify="space-between" align="center">
                               <Text fw={700}>Yield:</Text>
-                              <Text>{`${(token.annualYield * 100).toFixed(2)}%`}</Text>
+                              <Text>
+                                {token.annualYield !== undefined && token.annualYield !== null
+                                  ? `${(token.annualYield * 100).toFixed(2)}%`
+                                  : 'N/A'}
+                              </Text>
                             </Flex>
-                          )}
-                          {token.officialPrice !== undefined && (
                             <Flex justify="space-between" align="center">
                               <Text fw={700}>Original Token Price:</Text>
-                              <Text>{token.officialPrice} {token.currency || 'USD'}</Text>
+                              <Text>
+                                {token.officialPrice !== undefined && token.officialPrice !== null
+                                  ? `${token.officialPrice} ${token.currency || 'USD'}`
+                                  : 'N/A'}
+                              </Text>
                             </Flex>
-                          )}
-                        </Stack>
-                      </Card>
-                      
-                      <PropertyCard
-                        propertyToken={token}
-                        offer={offer}
-                      />
-                    </Stack>
-                  ))
+                          </Stack>
+                        </Card>
+                        
+                        <PropertyCard
+                          propertyToken={token}
+                          offer={offer}
+                        />
+                      </Stack>
+                    );
+                  })
                 ) : (
                   <Card withBorder p="md">
-                    <Text c="dimmed">No property information available for this offer</Text>
+                    <Stack gap="sm">
+                      <Text c="dimmed">No property information available for this offer</Text>
+                      <Text size="sm" c="dimmed">
+                        Property tokens: {propertyTokens.length}
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        Offer token type: {offer.offerTokenType}, Buyer token type: {offer.buyerTokenType}
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        Offer token address: {offer.offerTokenAddress}
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        Buyer token address: {offer.buyerTokenAddress}
+                      </Text>
+                    </Stack>
                   </Card>
                 )}
               </Grid.Col>
