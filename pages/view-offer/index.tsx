@@ -279,7 +279,17 @@ const ViewOfferPage = () => {
                   )}
                   <OfferText
                     title={t("amount")}
-                    value={new BigNumber(offer.amount).shiftedBy(-Number(offer.offerTokenDecimals || 18)).toFixed(2)}
+                    value={(() => {
+                      const decimals = Number(offer.offerTokenDecimals || 18);
+                      const amountBN = new BigNumber(offer.amount);
+                      const formatted = amountBN.shiftedBy(-decimals).toFixed(2);
+                      console.log('Quantity display:', {
+                        rawAmount: offer.amount,
+                        decimals,
+                        formatted,
+                      });
+                      return formatted;
+                    })()}
                   />
                   <OfferText
                     title="Available Amount"
