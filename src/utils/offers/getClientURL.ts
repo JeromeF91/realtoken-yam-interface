@@ -18,9 +18,13 @@ export const getTheGraphUrlYAM = (chainId: number): string => {
       return '';
   }
 };
-// get the authentication token from local storage if it exists
-const token = process.env.NEXT_PUBLIC_API_KEY ?? undefined;
-console.log('token', token);
+// get the authentication token from environment variable
+const token = process.env.NEXT_PUBLIC_API_KEY ?? process.env.API_KEY ?? undefined;
+if (!token) {
+  console.warn('No API key found in NEXT_PUBLIC_API_KEY or API_KEY environment variables. GraphQL requests may fail.');
+} else {
+  console.log('API key found, length:', token.length);
+}
 
 export const getYamClient = (
   chainId: number
