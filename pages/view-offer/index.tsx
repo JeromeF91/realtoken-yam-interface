@@ -331,16 +331,22 @@ const ViewOfferPage = () => {
                           const buyerTokenDecimals = Number(offer.buyerTokenDecimals || 18);
                           const amountBN = new BigNumber(offer.amount);
                           
-                          // Check if offerToken is USDC or armmv3USDC (6 decimals)
-                          const isOfferTokenUSDC = offerTokenDecimals === 6 || 
-                                                   offer.offerTokenName?.toUpperCase().includes('USDC') ||
-                                                   offer.offerTokenSymbol?.toUpperCase().includes('USDC');
+                          // Check if offerToken is armmv3USDC (use 18 decimals) or regular USDC (6 decimals)
+                          const isArmmv3USDC = offer.offerTokenName?.toUpperCase().includes('ARMMV3USDC') ||
+                                               offer.offerTokenSymbol?.toUpperCase().includes('ARMMV3USDC');
+                          const isRegularUSDC = (offerTokenDecimals === 6 || 
+                                                offer.offerTokenName?.toUpperCase().includes('USDC') ||
+                                                offer.offerTokenSymbol?.toUpperCase().includes('USDC')) && !isArmmv3USDC;
                           
-                          // If offerToken is USDC (6 decimals), but amount is very large,
-                          // it might be stored in buyerToken decimals (18) instead
+                          // If offerToken is armmv3USDC, use 18 decimals
+                          // If offerToken is regular USDC, use 6 decimals
+                          // Otherwise, check if amount is too large
                           let decimalsToUse = offerTokenDecimals;
                           
-                          if (isOfferTokenUSDC) {
+                          if (isArmmv3USDC) {
+                            decimalsToUse = 18;
+                            console.log('Quantity: Using 18 decimals for armmv3USDC token');
+                          } else if (isRegularUSDC) {
                             // Check if amount seems too large for 6 decimals
                             const normalizedWith6Decimals = amountBN.shiftedBy(-6);
                             const normalizedWith18Decimals = amountBN.shiftedBy(-18);
