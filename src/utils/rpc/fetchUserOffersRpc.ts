@@ -91,15 +91,6 @@ export const fetchUserOffersRpc = async (
       provider
     ) as RealTokenYamUpgradeable;
 
-    // Get total offer count using callStatic for read-only call
-    const offerCountBN = await yamContract.callStatic.getOfferCount();
-    const offerCount = offerCountBN.toNumber();
-    console.log('Total offers on chain:', offerCount);
-
-    if (offerCount === 0) {
-      return [];
-    }
-
     // Load Redis cache functions (server-side only)
     const redisCache = await getRedisCacheFunctions();
     const useRedis = await redisCache.isRedisAvailable();
@@ -110,8 +101,44 @@ export const fetchUserOffersRpc = async (
     const tokenDecimalsCache = new Map<string, number>();
     const accountRealtokenMap = new Map<string, DataRealtokenType>();
 
-    // Fetch offers using multicall (batched RPC calls)
-    const userOffers: Offer[] = [];
+    // Step 1: Query OfferCreated events filtered by seller address to get only user's offers
+    // This is much more efficient than fetching all offers
+    const userAddressLower = account.toLowerCase();
+    const contractInterface = new utils.Interface(realTokenYamUpgradeableABI);
+    
+    console.log(`Querying OfferCreated events for seller: ${userAddressLower}`);
+    
+    // Query events from block 0 to latest (or use a reasonable range)
+    // For efficiency, we could cache the last queried block
+    const currentBlock = await provider.getBlockNumber();
+    const fromBlock = Math.max(0, currentBlock - 100000); // Last ~100k blocks should be enough
+    const toBlock = currentBlock;
+    
+    const offerCreatedFilter = yamContract.filters.OfferCreated(null, userAddressLower, null);
+    const events = await yamContract.queryFilter(offerCreatedFilter, fromBlock, toBlock);
+    
+    console.log(`Found ${events.length} OfferCreated events for user ${account}`);
+    
+    if (events.length === 0) {
+      return [];
+    }
+
+    // Extract offer IDs from events
+    const userOfferIds: number[] = [];
+    events.forEach(event => {
+      if (event.args && event.args.offerId !== undefined) {
+        const offerId = event.args.offerId.toNumber();
+        userOfferIds.push(offerId);
+      }
+    });
+
+    console.log(`Found ${userOfferIds.length} offer IDs for user ${account}`);
+
+    if (userOfferIds.length === 0) {
+      return [];
+    }
+
+    // Step 2: Fetch only the user's offers using multicall
     const offerDataArray: Array<{
       offerId: number;
       seller: string;
@@ -122,32 +149,12 @@ export const fetchUserOffersRpc = async (
       amount: string;
     }> = [];
 
-    // Step 1: Fetch all offers using multicall (single RPC call!)
-    const userAddressLower = account.toLowerCase();
-    const contractInterface = new utils.Interface(realTokenYamUpgradeableABI);
-    
-    // Prepare all offer IDs
-    const allOfferIds = Array.from({ length: offerCount }, (_, i) => i);
-    
-    // Use multicall to fetch all offers in a single RPC call
-    // Split into chunks if too many (multicall has limits, typically 100-200 calls)
-    const multicallBatchSize = 100; // Safe limit for most RPC providers
+    // Fetch offers using multicall in batches
+    const multicallBatchSize = 100;
     const offerResults: Array<{ offerId: number; success: boolean; data: any }> = [];
     
-    // Ensure provider is ready before making calls
-    try {
-      await provider.getNetwork();
-    } catch (networkError: any) {
-      console.error('Provider network error:', networkError);
-      // If network detection fails, the provider should still work with explicit network config
-      // But log the error for debugging
-      if (networkError?.code === 'NETWORK_ERROR') {
-        console.warn('Network detection failed, but continuing with explicit network configuration');
-      }
-    }
-    
-    for (let i = 0; i < allOfferIds.length; i += multicallBatchSize) {
-      const batchIds = allOfferIds.slice(i, i + multicallBatchSize);
+    for (let i = 0; i < userOfferIds.length; i += multicallBatchSize) {
+      const batchIds = userOfferIds.slice(i, i + multicallBatchSize);
       
       try {
         const batchResults = await batchShowOffers(
@@ -157,7 +164,6 @@ export const fetchUserOffersRpc = async (
           batchIds
         );
         
-        // Map results back to offer IDs
         batchResults.forEach((result, index) => {
           offerResults.push({
             offerId: batchIds[index],
@@ -166,65 +172,44 @@ export const fetchUserOffersRpc = async (
           });
         });
       } catch (error: any) {
-        // Handle network errors gracefully
-        if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('could not detect network')) {
-          console.error(`Network error fetching offers batch ${i}-${i + batchIds.length}:`, error?.message);
-          // Mark all offers in this batch as failed
-          batchIds.forEach(offerId => {
-            offerResults.push({
-              offerId,
-              success: false,
-              data: null,
-            });
+        console.error(`Error fetching offers batch ${i}-${i + batchIds.length}:`, error);
+        batchIds.forEach(offerId => {
+          offerResults.push({
+            offerId,
+            success: false,
+            data: null,
           });
-        } else {
-          console.error(`Error fetching offers batch ${i}-${i + batchIds.length}:`, error);
-          // Mark all offers in this batch as failed
-          batchIds.forEach(offerId => {
-            offerResults.push({
-              offerId,
-              success: false,
-              data: null,
-            });
-          });
-        }
+        });
       }
       
-      // Small delay between multicall batches if needed
-      if (i + multicallBatchSize < allOfferIds.length) {
+      if (i + multicallBatchSize < userOfferIds.length) {
         await delay(50);
       }
     }
     
-    // Filter for user's offers and extract data
+    // Extract data from successful results
     offerResults.forEach(({ offerId, success, data }) => {
       if (!success || !data) {
-        // Skip failed calls (offers that don't exist)
-        return;
+        return; // Skip failed calls
       }
       
       try {
         const [seller, offerTokenAddress, buyerTokenAddress, buyer, priceBN, amountBN] = data;
-        
-        // Only process if this is the user's offer
-        if (seller.toLowerCase() === userAddressLower) {
-          offerDataArray.push({
-            offerId,
-            seller: seller.toLowerCase(),
-            offerTokenAddress: offerTokenAddress.toLowerCase(),
-            buyerTokenAddress: buyerTokenAddress.toLowerCase(),
-            buyer: buyer.toLowerCase(),
-            price: priceBN.toString(),
-            amount: amountBN.toString(),
-          });
-        }
+        offerDataArray.push({
+          offerId,
+          seller: seller.toLowerCase(),
+          offerTokenAddress: offerTokenAddress.toLowerCase(),
+          buyerTokenAddress: buyerTokenAddress.toLowerCase(),
+          buyer: buyer.toLowerCase(),
+          price: priceBN.toString(),
+          amount: amountBN.toString(),
+        });
       } catch (error) {
-        // Skip invalid data
         console.warn(`Error processing offer ${offerId}:`, error);
       }
     });
 
-    console.log(`Found ${offerDataArray.length} offers for user ${account}`);
+    console.log(`Successfully fetched ${offerDataArray.length} offers for user ${account}`);
 
     if (offerDataArray.length === 0) {
       return [];
