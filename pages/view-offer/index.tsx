@@ -335,14 +335,61 @@ const ViewOfferPage = () => {
                     <Flex direction="column" gap={3}>
                       <Text fw={700}>Price</Text>
                       {offer.offerTokenName && offer.buyerTokenName && offer.price ? (
-                        <Stack gap={2}>
-                          <Text>
-                            {`1 "${offer.offerTokenName}" = ${new BigNumber(offer.price).toFixed(1)} "${offer.buyerTokenName}"`}
-                          </Text>
-                          <Text>
-                            {`1 "${offer.buyerTokenName}" = ${new BigNumber(1).dividedBy(offer.price).toFixed(5)} "${offer.offerTokenName}"`}
-                          </Text>
-                        </Stack>
+                        (() => {
+                          // Check if buyerToken is USDC (or USD-pegged stablecoin)
+                          const isBuyerTokenUSD = offer.buyerTokenName.toUpperCase().includes('USDC') || 
+                                                  offer.buyerTokenName.toUpperCase().includes('USD') ||
+                                                  offer.buyerTokenSymbol?.toUpperCase().includes('USDC') ||
+                                                  offer.buyerTokenSymbol?.toUpperCase().includes('USD');
+                          
+                          // Check if offerToken is USDC
+                          const isOfferTokenUSD = offer.offerTokenName.toUpperCase().includes('USDC') || 
+                                                  offer.offerTokenName.toUpperCase().includes('USD') ||
+                                                  offer.offerTokenSymbol?.toUpperCase().includes('USDC') ||
+                                                  offer.offerTokenSymbol?.toUpperCase().includes('USD');
+                          
+                          const priceBN = new BigNumber(offer.price);
+                          
+                          // If buyerToken is USD/USDC, show price as "X USD per 1 offerToken"
+                          if (isBuyerTokenUSD && !priceBN.isZero()) {
+                            return (
+                              <Text>
+                                {`1 ${offer.offerTokenName} = ${priceBN.toFixed(2)} USD`}
+                              </Text>
+                            );
+                          }
+                          
+                          // If offerToken is USD/USDC, show price as "X offerToken per 1 USD"
+                          if (isOfferTokenUSD && !priceBN.isZero()) {
+                            const inversePrice = new BigNumber(1).dividedBy(priceBN);
+                            return (
+                              <Text>
+                                {`1 ${offer.buyerTokenName} = ${inversePrice.toFixed(2)} USD`}
+                              </Text>
+                            );
+                          }
+                          
+                          // Fallback: show both directions if price is valid
+                          if (!priceBN.isZero() && !priceBN.isNaN() && priceBN.isFinite()) {
+                            return (
+                              <Stack gap={2}>
+                                <Text>
+                                  {`1 ${offer.offerTokenName} = ${priceBN.toFixed(4)} ${offer.buyerTokenName}`}
+                                </Text>
+                                <Text c="dimmed" size="sm">
+                                  {`1 ${offer.buyerTokenName} = ${new BigNumber(1).dividedBy(priceBN).toFixed(4)} ${offer.offerTokenName}`}
+                                </Text>
+                              </Stack>
+                            );
+                          }
+                          
+                          // If price is 0 or invalid, show error
+                          return (
+                            <Text c="red" size="sm">
+                              Invalid price: {offer.price}
+                            </Text>
+                          );
+                        })()
                       ) : (
                         <Skeleton height={25} width={400} />
                       )}
