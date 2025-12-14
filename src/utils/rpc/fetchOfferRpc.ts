@@ -207,12 +207,20 @@ export const fetchOfferRpc = async (
       rpcProvider
     );
 
-    // Calculate available amount
+    console.log('Balance and Allowance:', {
+      balance: balanceAndAllowance.balance,
+      allowance: balanceAndAllowance.allowance,
+      amountBN: amountBN.toString(),
+    });
+
+    // Calculate available amount (use the minimum of amount, balance, and allowance)
     const availableAmount = Math.min(
       Number(amountBN.toString()),
       Number(balanceAndAllowance.balance),
       Number(balanceAndAllowance.allowance)
     ).toString();
+    
+    console.log('Calculated availableAmount:', availableAmount);
 
     // Create account user realtoken data
     const accountUser: DataRealtokenType = {
@@ -248,7 +256,7 @@ export const fetchOfferRpc = async (
         price: priceBN.toString(),
         amount: amountBN.toString(),
       },
-      availableAmount: availableAmount,
+      availableAmount: amountBN.toString(), // Use the full amount from the contract - parseOffer will calculate the actual available amount
       balance: offerTokenType.toNumber() !== 1 ? {
         amount: balanceAndAllowance.balance,
       } : null,
@@ -258,6 +266,17 @@ export const fetchOfferRpc = async (
       createdAtTimestamp: 0, // TODO: Get from events if needed
       removedAtBlock: null,
     } as any;
+    
+    console.log('Offer GraphQL structure:', {
+      id: offerGraphQl.id,
+      price: offerGraphQl.price.price,
+      amount: offerGraphQl.price.amount,
+      availableAmount: offerGraphQl.availableAmount,
+      balance: offerGraphQl.balance?.amount,
+      allowance: offerGraphQl.allowance?.allowance,
+      offerTokenDecimals: offerGraphQl.offerToken.decimals,
+      buyerTokenDecimals: offerGraphQl.buyerToken.decimals,
+    });
 
     const extendedTokensAddress = getExtendedTokens(chainId).map((token) => token.contractAddress);
 
