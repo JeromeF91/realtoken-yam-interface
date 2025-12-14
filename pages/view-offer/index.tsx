@@ -458,9 +458,29 @@ const ViewOfferPage = () => {
                             <Flex justify="space-between" align="center">
                               <Text fw={700}>New Yield:</Text>
                               <Text>
-                                {offer.offerYield !== undefined && offer.offerYield !== null
-                                  ? `${offer.offerYield.toFixed(2)}%`
-                                  : 'N/A'}
+                                {(() => {
+                                  // Calculate new yield based on offer price
+                                  // Formula: (netRentYearPerToken / offerPrice) * 100
+                                  if (token.netRentYearPerToken && offer.price) {
+                                    const offerPriceBN = new BigNumber(offer.price);
+                                    if (!offerPriceBN.isZero() && offerPriceBN.isFinite()) {
+                                      const netRentBN = new BigNumber(token.netRentYearPerToken);
+                                      const newYield = netRentBN.dividedBy(offerPriceBN).multipliedBy(100);
+                                      console.log('New yield calculation:', {
+                                        netRentYearPerToken: token.netRentYearPerToken,
+                                        offerPrice: offer.price,
+                                        newYield: newYield.toString(),
+                                        offerYield: offer.offerYield,
+                                      });
+                                      return `${newYield.toFixed(2)}%`;
+                                    }
+                                  }
+                                  // Fallback to offer.offerYield if available
+                                  if (offer.offerYield !== undefined && offer.offerYield !== null && offer.offerYield > 0) {
+                                    return `${offer.offerYield.toFixed(2)}%`;
+                                  }
+                                  return 'N/A';
+                                })()}
                               </Text>
                             </Flex>
                             <Flex justify="space-between" align="center">
