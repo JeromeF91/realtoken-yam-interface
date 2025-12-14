@@ -114,7 +114,9 @@ export const BuyModalWithPermit: FC<
     context.closeModal(id);
   }, [context, id, reset]);
 
-  const { balance, WalletERC20Balance } = useWalletERC20Balance(buyerTokenAddress)
+  // Note: offerToken and buyerToken are reversed in naming
+  // When buying, you pay with offerToken, so we need to check the balance of offerToken
+  const { balance, WalletERC20Balance } = useWalletERC20Balance(offer.offerTokenAddress)
 
   const total = values?.amount * values?.price;
 
