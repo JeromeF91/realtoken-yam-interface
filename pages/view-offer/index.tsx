@@ -55,7 +55,19 @@ const ViewOfferPage = () => {
   // Fetch offer when offerId changes
   useEffect(() => {
     const fetchOffer = async () => {
-      if (!offerId || !chainId || !provider || !account || !propertiesToken || !prices || !wlProperties) {
+      if (!offerId) {
+        return;
+      }
+      
+      // Log what's missing
+      if (!chainId) console.log('Waiting for chainId...');
+      if (!provider) console.log('Waiting for provider...');
+      if (!account) console.log('Waiting for account...');
+      if (!propertiesToken) console.log('Waiting for propertiesToken...');
+      if (!prices) console.log('Waiting for prices...');
+      if (!wlProperties) console.log('Waiting for wlProperties...');
+      
+      if (!chainId || !provider || !account || !propertiesToken || !prices || !wlProperties) {
         return;
       }
 
@@ -189,7 +201,13 @@ const ViewOfferPage = () => {
               
               {!isConnected && (
                 <Alert icon={<IconInfoCircle size={16} />} color="blue">
-                  Please connect your wallet to view offer details
+                  Please connect your wallet to view offer details. The offer ID input is ready: {offerId || 'enter an ID'}
+                </Alert>
+              )}
+              
+              {isConnected && chainId && (
+                <Alert icon={<IconInfoCircle size={16} />} color="green" variant="light">
+                  Connected to chain {chainId}. Ready to fetch offer {offerId || '(enter ID above)'}
                 </Alert>
               )}
             </Stack>
