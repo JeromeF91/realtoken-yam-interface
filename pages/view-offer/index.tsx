@@ -264,8 +264,8 @@ const ViewOfferPage = () => {
                     value={offer.offerTokenName}
                   />
                   <OfferText
-                    title={t("buyerTokenName")}
-                    value={offer.buyerTokenName}
+                    title="Seller Address"
+                    value={offer.buyerTokenAddress}
                   />
                   <OfferText
                     title="Token Smart Contract"

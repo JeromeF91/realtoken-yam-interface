@@ -217,8 +217,10 @@ const ShowOfferPage = () => {
                   </Flex>
                   
                   <Flex justify="space-between">
-                    <Text fw={700}>Buyer Token:</Text>
-                    <Text>{offer.buyerTokenName} ({offer.buyerTokenSymbol})</Text>
+                    <Text fw={700}>Seller Address:</Text>
+                    <Text style={{ fontFamily: 'monospace', fontSize: '0.9em' }}>
+                      {offer.buyerTokenAddress}
+                    </Text>
                   </Flex>
                   
                   <Flex justify="space-between">
