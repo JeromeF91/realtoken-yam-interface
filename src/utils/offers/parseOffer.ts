@@ -119,12 +119,36 @@ export const parseOffer = (
           sellerAddress: (offer.seller.address as string)?.toLowerCase(),
           buyerAddress: (offer.buyer?.address as string)?.toLowerCase(),
           price: offer.price.price.toString(),
-          amount:
-            BigNumber.minimum(
-              offer.availableAmount,
+          amount: (() => {
+            // Calculate amount as minimum of availableAmount, balance, and allowance
+            // But if balance/allowance are 0 or unavailable, use availableAmount
+            const availableBN = new BigNumber(offer.availableAmount);
+            const balanceBN = new BigNumber(balanceWallet || '0');
+            const allowanceBN = new BigNumber(allowance || '0');
+            
+            // If both balance and allowance are 0, use availableAmount (the offer amount from contract)
+            // This handles cases where we can't fetch balance/allowance (e.g., wrong seller address)
+            if (balanceBN.isZero() && allowanceBN.isZero()) {
+              console.log('parseOffer: balance and allowance are 0, using availableAmount for amount:', {
+                offerId: offer.id,
+                availableAmount: offer.availableAmount,
+                balanceWallet,
+                allowance,
+              });
+              return availableBN.toString(10);
+            }
+            
+            // Otherwise, use the minimum of all three
+            const minAmount = BigNumber.minimum(availableBN, balanceBN, allowanceBN);
+            console.log('parseOffer: calculated amount from minimum:', {
+              offerId: offer.id,
+              availableAmount: offer.availableAmount,
               balanceWallet,
-              allowance
-            ).toString(10) ?? '0',
+              allowance,
+              calculatedAmount: minAmount.toString(10),
+            });
+            return minAmount.toString(10);
+          })(),
           availableAmount: offer.availableAmount.toString(),
           balanceWallet: balanceWallet ?? '0',
           allowanceToken: allowance ?? '0',
