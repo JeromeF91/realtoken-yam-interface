@@ -378,7 +378,8 @@ const ViewOfferPage = () => {
                             offerTokenSymbol: offer.offerTokenSymbol,
                             offerTokenDecimals,
                             buyerTokenDecimals,
-                            isOfferTokenUSDC,
+                            isArmmv3USDC,
+                            isRegularUSDC,
                             decimalsUsed: decimalsToUse,
                             result: result.toString(),
                           });
