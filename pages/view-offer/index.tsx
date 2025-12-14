@@ -250,129 +250,96 @@ const ViewOfferPage = () => {
           )}
 
           {offer && !isLoading && (
-            <Card withBorder p="md">
-              <Stack gap="md">
-                <Group justify="space-between" align="center">
-                  <Title order={2}>Offer #{offer.offerId}</Title>
-                  {isAccountOffer && (
-                    <Text size="sm" c="dimmed">Your Offer</Text>
-                  )}
-                </Group>
+            <Grid gutter="md">
+              {/* Left Column - Offer Details */}
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                <Stack gap="md">
+                  {/* Offer ID Badge */}
+                  <Badge size="lg" color="orange" variant="filled">
+                    {offer.offerId}
+                  </Badge>
 
-                <Divider />
+                  <Stack gap="sm">
+                    <Flex direction="column" gap={3}>
+                      <Text fw={700}>Offer Token Name</Text>
+                      <Text>{offer.offerTokenName}</Text>
+                    </Flex>
 
-                <Stack gap="sm">
-                  <OfferText
-                    title={t("offerTokenName")}
-                    value={offer.offerTokenName}
-                  />
-                  <OfferText
-                    title="Seller Address"
-                    value={offer.buyerTokenAddress}
-                  />
-                  <OfferText
-                    title="Token Smart Contract"
-                    value={offer.sellerAddress}
-                  />
-                  {offer.buyerAddress && offer.buyerAddress !== '0x0000000000000000000000000000000000000000' && (
-                    <OfferText
-                      title="Buyer Address"
-                      value={offer.buyerAddress}
+                    <Flex direction="column" gap={3}>
+                      <Text fw={700}>Buyer Token Name</Text>
+                      <Text>{offer.buyerTokenName}</Text>
+                    </Flex>
+
+                    <Flex direction="column" gap={3}>
+                      <Text fw={700}>Seller Address</Text>
+                      <Text style={{ fontFamily: 'monospace', fontSize: '0.9em' }}>
+                        {offer.buyerTokenAddress}
+                      </Text>
+                    </Flex>
+
+                    <Flex direction="column" gap={3}>
+                      <Text fw={700}>Token Smart Contract</Text>
+                      <Text style={{ fontFamily: 'monospace', fontSize: '0.9em' }}>
+                        {offer.sellerAddress}
+                      </Text>
+                    </Flex>
+
+                    <Flex direction="column" gap={3}>
+                      <Text fw={700}>Quantity</Text>
+                      <Text>
+                        {(() => {
+                          const decimals = Number(offer.offerTokenDecimals || 18);
+                          const amountBN = new BigNumber(offer.amount);
+                          return amountBN.shiftedBy(-decimals).toFixed(2);
+                        })()}
+                      </Text>
+                    </Flex>
+
+                    <Flex direction="column" gap={3}>
+                      <Text fw={700}>Price</Text>
+                      {offer.offerTokenName && offer.buyerTokenName && offer.price ? (
+                        <Stack gap={2}>
+                          <Text>
+                            {`1 "${offer.offerTokenName}" = ${new BigNumber(offer.price).toFixed(1)} "${offer.buyerTokenName}"`}
+                          </Text>
+                          <Text>
+                            {`1 "${offer.buyerTokenName}" = ${new BigNumber(1).dividedBy(offer.price).toFixed(5)} "${offer.offerTokenName}"`}
+                          </Text>
+                        </Stack>
+                      ) : (
+                        <Skeleton height={25} width={400} />
+                      )}
+                    </Flex>
+                  </Stack>
+
+                  <Divider />
+
+                  <Flex justify="center">
+                    <BuyActionsWithPermit
+                      buyOffer={offer}
+                      loading={isLoading}
                     />
-                  )}
-                  <OfferText
-                    title={t("amount")}
-                    value={(() => {
-                      const decimals = Number(offer.offerTokenDecimals || 18);
-                      const amountBN = new BigNumber(offer.amount);
-                      const formatted = amountBN.shiftedBy(-decimals).toFixed(2);
-                      console.log('Quantity display:', {
-                        rawAmount: offer.amount,
-                        decimals,
-                        formatted,
-                      });
-                      return formatted;
-                    })()}
-                  />
-                  <OfferText
-                    title="Available Amount"
-                    value={new BigNumber(offer.availableAmount).shiftedBy(-Number(offer.offerTokenDecimals || 18)).toFixed(2)}
-                  />
-                  
-                  <Flex direction="column" gap={3}>
-                    <Text fw={700}>Price</Text>
-                    {offer.offerTokenName && offer.buyerTokenName && offer.price ? (
-                      <>
-                        <Text>
-                          {`1 ${offer.offerTokenName} = ${new BigNumber(offer.price).toFixed(6)} ${offer.buyerTokenName}`}
-                          {offer.offerPrice && ` ($${parseFloat(offer.offerPrice.toString()).toFixed(2)})`}
-                        </Text>
-                        <Text>
-                          {`1 ${offer.buyerTokenName} = ${new BigNumber(1).dividedBy(offer.price).toFixed(6)} ${offer.offerTokenName}`}
-                        </Text>
-                      </>
-                    ) : (
-                      <Skeleton height={25} width={400} />
-                    )}
                   </Flex>
-                  
-                  {offer.priceDelta !== undefined && (
-                    <OfferText
-                      title="PriceDiff"
-                      value={`${(offer.priceDelta * 100).toFixed(2)}%`}
-                    />
-                  )}
-                  
-                  {offer.offerYield !== undefined && (
-                    <OfferText
-                      title="NewYield"
-                      value={`${offer.offerYield.toFixed(2)}%`}
-                    />
-                  )}
-
-                  <OfferText
-                    title="Seller Balance"
-                    value={new BigNumber(offer.balanceWallet || '0').shiftedBy(-Number(offer.offerTokenDecimals || 18)).toFixed(6)}
-                  />
-
-                  <OfferText
-                    title="Seller Allowance"
-                    value={new BigNumber(offer.allowanceToken || '0').shiftedBy(-Number(offer.offerTokenDecimals || 18)).toFixed(6)}
-                  />
-
-                  {offer.createdAtTimestamp > 0 && (
-                    <OfferText
-                      title="Created At"
-                      value={new Date(offer.createdAtTimestamp * 1000).toLocaleString()}
-                    />
-                  )}
                 </Stack>
+              </Grid.Col>
 
-                <Divider />
-
-                <Flex direction="column" gap="md" align="center">
-                  <BuyActionsWithPermit
-                    buyOffer={offer}
-                    loading={isLoading}
-                  />
-                </Flex>
-              </Stack>
-            </Card>
-          )}
-
-          {offer && propertyTokens.length > 0 && (
-            <Stack gap="md">
-              <Title order={3}>Property Information</Title>
-              <Flex direction="column" gap="md" align="center" w="100%">
-                {propertyTokens.map((token) => (
-                  <PropertyCard
-                    key={token.contractAddress}
-                    propertyToken={token}
-                    offer={offer}
-                  />
-                ))}
-              </Flex>
-            </Stack>
+              {/* Right Column - Property Card */}
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                {propertyTokens.length > 0 ? (
+                  propertyTokens.map((token) => (
+                    <PropertyCard
+                      key={token.contractAddress}
+                      propertyToken={token}
+                      offer={offer}
+                    />
+                  ))
+                ) : (
+                  <Card withBorder p="md">
+                    <Text c="dimmed">No property information available for this offer</Text>
+                  </Card>
+                )}
+              </Grid.Col>
+            </Grid>
           )}
         </Stack>
       </Container>
