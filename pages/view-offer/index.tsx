@@ -292,9 +292,9 @@ const ViewOfferPage = () => {
           )}
 
           {offer && !isLoading && (
-            <Grid gutter="md">
+            <Grid gutter="xl">
               {/* Left Column - Offer Details */}
-              <Grid.Col span={{ base: 12, md: 6 }}>
+              <Grid.Col span={{ base: 12, md: 5 }}>
                 <Stack gap="md">
                   {/* Offer ID Badge */}
                   <Badge size="lg" color="orange" variant="filled">
@@ -431,7 +431,7 @@ const ViewOfferPage = () => {
               </Grid.Col>
 
               {/* Right Column - Property Card */}
-              <Grid.Col span={{ base: 12, md: 6 }}>
+              <Grid.Col span={{ base: 12, md: 7 }}>
                 {propertyTokens.length > 0 ? (
                   propertyTokens.map((token) => {
                     console.log('Property token data:', {
