@@ -326,18 +326,25 @@ export const fetchOfferRpc = async (
         address: buyer.toLowerCase(),
       } : null,
       price: {
-        // The contract returns: priceBN = price per token (in buyerToken smallest units), amountBN = total offerToken amount
-        // priceBN is already the price per token, we just need to normalize it by buyerToken decimals
-        // Price per unit = priceBN / 10^buyerTokenDecimals
+        // The contract returns: priceBN = price per token
+        // If buyerToken is USDC (6 decimals), priceBN is in USDC decimals
+        // If buyerToken is not USDC, priceBN is in buyerToken decimals
+        // We need to normalize by the appropriate decimals
         price: (() => {
-          // priceBN is already the price per token, just normalize by buyerToken decimals
-          const pricePerUnit = new BigNumber(priceBN.toString()).dividedBy(new BigNumber(10).pow(buyerTokenDecimals));
+          // Check if buyerToken is likely USDC (6 decimals) or if offerToken is USDC
+          // If buyerToken has 6 decimals, use buyerToken decimals
+          // Otherwise, use buyerToken decimals as default
+          const decimalsToUse = buyerTokenDecimals;
+          
+          // priceBN is already the price per token, normalize by the appropriate decimals
+          const pricePerUnit = new BigNumber(priceBN.toString()).dividedBy(new BigNumber(10).pow(decimalsToUse));
           
           console.log('Price calculation:', {
             priceBN: priceBN.toString(),
             amountBN: amountBN.toString(),
             offerTokenDecimals,
             buyerTokenDecimals,
+            decimalsToUse,
             pricePerUnit: pricePerUnit.toString(),
             pricePerUnitFixed: pricePerUnit.toFixed(6),
           });
