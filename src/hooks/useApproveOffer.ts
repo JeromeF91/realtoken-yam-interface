@@ -107,8 +107,23 @@ export const useApproveOffer: UseApproveOffer = (offer, amount) => {
     }
 
     const approve = async () => {
-        if(!buyerToken || !realTokenYamUpgradeable) return;
+        if(!buyerToken || !realTokenYamUpgradeable || !account) {
+            console.error('Cannot approve: missing required parameters', {
+                buyerToken: !!buyerToken,
+                realTokenYamUpgradeable: !!realTokenYamUpgradeable,
+                account: !!account,
+                tokenToApproveAddress,
+            });
+            return;
+        }
+        
         try{
+            console.log('Starting approval transaction:', {
+                tokenAddress: tokenToApproveAddress,
+                tokenName: offer.offerTokenName,
+                spender: realTokenYamUpgradeable.address,
+                amount: buyerTokenAmount.toString(10),
+            });
 
             setApproveLoading(true);
 
@@ -117,6 +132,11 @@ export const useApproveOffer: UseApproveOffer = (offer, amount) => {
                 buyerTokenAmount.toString(10)
             );
   
+            console.log('Approval transaction sent:', {
+                hash: approveTx.hash,
+                blockExplorerUrl: activeChain?.blockExplorerUrl,
+            });
+
             const notificationApprove = {
                 key: approveTx.hash,
                 href: `${activeChain?.blockExplorerUrl}tx/${approveTx.hash}`,
@@ -131,27 +151,65 @@ export const useApproveOffer: UseApproveOffer = (offer, amount) => {
 
             approveTx
                 .wait()
-                .then(({ status }) =>
+                .then(({ status }) => {
+                    console.log('Approval transaction confirmed:', {
+                        hash: approveTx.hash,
+                        status,
+                    });
                     updateNotification(
                     NOTIFICATIONS[
                         status === 1
                         ? NotificationsID.approveOfferSuccess
                         : NotificationsID.approveOfferError
                     ](notificationApprove)
-                    )
-                );
+                    );
+                })
+                .catch((waitError) => {
+                    console.error('Error waiting for approval transaction:', waitError);
+                    setApproveLoading(false);
+                });
 
             approveTx.wait(1)
                 .then(({ status }) => {
+                    console.log('Approval transaction finalized:', {
+                        hash: approveTx.hash,
+                        status,
+                    });
                     if(status == 1){
                         setApproveNeeded(false);
-                        setApproveLoading(false)
+                        setApproveLoading(false);
+                        // Re-check allowance after approval
+                        checkApproval();
+                    } else {
+                        setApproveLoading(false);
                     }
+                })
+                .catch((waitError) => {
+                    console.error('Error waiting for approval transaction finalization:', waitError);
+                    setApproveLoading(false);
                 });
 
-        }catch(err){
+        }catch(err: any){
              console.error('Cannot approve: ', err);
+             console.error('Approval error details:', {
+                 error: err,
+                 message: err?.message,
+                 code: err?.code,
+                 data: err?.data,
+                 tokenAddress: tokenToApproveAddress,
+                 spender: realTokenYamUpgradeable?.address,
+                 amount: buyerTokenAmount.toString(10),
+             });
              setApproveLoading(false);
+             
+             // Show error notification
+             showNotification(
+                 NOTIFICATIONS[NotificationsID.approveOfferError]({
+                     key: 'approval-error',
+                     hash: '',
+                     href: '',
+                 })
+             );
         }
     }
 
