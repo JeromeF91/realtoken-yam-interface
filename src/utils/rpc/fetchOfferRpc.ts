@@ -208,10 +208,31 @@ export const fetchOfferRpc = async (
       rpcProvider
     );
 
-    console.log('Balance and Allowance:', {
+    console.log('Balance and Allowance (raw):', {
       balance: balanceAndAllowance.balance,
       allowance: balanceAndAllowance.allowance,
       amountBN: amountBN.toString(),
+      offerTokenAddress,
+      seller,
+      yamContractAddress,
+      offerTokenDecimals,
+    });
+
+    // Format balance and allowance with decimals for logging
+    const balanceFormatted = new BigNumber(balanceAndAllowance.balance)
+      .shiftedBy(-offerTokenDecimals)
+      .toFixed(6);
+    const allowanceFormatted = new BigNumber(balanceAndAllowance.allowance)
+      .shiftedBy(-offerTokenDecimals)
+      .toFixed(6);
+    const amountFormatted = new BigNumber(amountBN.toString())
+      .shiftedBy(-offerTokenDecimals)
+      .toFixed(6);
+    
+    console.log('Balance and Allowance (formatted):', {
+      balance: balanceFormatted,
+      allowance: allowanceFormatted,
+      amount: amountFormatted,
     });
 
     // Calculate available amount (use the minimum of amount, balance, and allowance)
@@ -224,6 +245,7 @@ export const fetchOfferRpc = async (
     console.log('Calculated availableAmount:', availableAmount);
 
     // Create account user realtoken data
+    // Always set balance and allowance, regardless of token type
     const accountUser: DataRealtokenType = {
       id: `${seller.toLowerCase()}-${offerTokenAddress.toLowerCase()}`,
       amount: balanceAndAllowance.balance,
@@ -266,6 +288,8 @@ export const fetchOfferRpc = async (
         amount: amountBN.toString(),
       },
       availableAmount: amountBN.toString(), // Use the full amount from the contract - parseOffer will calculate the actual available amount
+      // Always set balance and allowance for ERC20 tokens (type 2 or 3)
+      // For type 1 (RealToken), parseOffer will use accountUserRealtoken instead
       balance: offerTokenType.toNumber() !== 1 ? {
         amount: balanceAndAllowance.balance,
       } : null,

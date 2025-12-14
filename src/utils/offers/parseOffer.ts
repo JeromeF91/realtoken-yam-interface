@@ -60,8 +60,22 @@ export const parseOffer = (
             offer.offerToken.tokenType === 2 ||
             offer.offerToken.tokenType === 3
           ) {
-            balanceWallet = offer.balance?.amount ?? offer.availableAmount;
-            allowance = offer.allowance?.allowance ?? offer.availableAmount;
+            // For ERC20 tokens, use balance and allowance from the offer
+            // If not available, fall back to availableAmount (but this shouldn't happen with RPC)
+            balanceWallet = offer.balance?.amount ?? '0';
+            allowance = offer.allowance?.allowance ?? '0';
+            
+            // Log for debugging
+            console.log('parseOffer ERC20 token (type 2/3):', {
+              offerId: offer.id,
+              tokenName: offer.offerToken.name,
+              tokenType: offer.offerToken.tokenType,
+              balanceFromOffer: offer.balance?.amount,
+              allowanceFromOffer: offer.allowance?.allowance,
+              balanceWallet,
+              allowance,
+              availableAmount: offer.availableAmount,
+            });
 
             // logLabel = 'parseOffer type 2/3 blance/allowance';
           }
