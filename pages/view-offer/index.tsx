@@ -202,29 +202,9 @@ const ViewOfferPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offerId, chainId, provider, account, propertiesToken, prices]);
 
-  // Load property tokens when offer or propertiesToken changes
-  useEffect(() => {
-    if (!offer || propertiesIsloading || !propertiesToken) return;
-
-    const tokens: any[] = [];
-    
-    if (offer.buyerTokenType == 1) {
-      const token = getPropertyToken(offer.buyerTokenAddress);
-      if (token) tokens.push(token);
-    }
-
-    if (offer.offerTokenType == 1) {
-      const token = getPropertyToken(offer.offerTokenAddress);
-      if (token) tokens.push(token);
-    }
-
-    // Only update if tokens changed to avoid infinite loop
-    if (tokens.length !== propertyTokens.length || 
-        tokens.some((t, i) => t?.contractAddress !== propertyTokens[i]?.contractAddress)) {
-      setPropertyTokens(tokens);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offer?.buyerTokenAddress, offer?.offerTokenAddress, offer?.buyerTokenType, offer?.offerTokenType, propertiesToken, propertiesIsloading]);
+  // Note: Property tokens are now set directly in fetchOffer function
+  // This useEffect was overwriting the API-fetched tokens with only local cache tokens
+  // Removed to preserve the API-fetched tokens with annualYield and officialPrice
 
   const handleSearch = () => {
     if (!offerId) {
