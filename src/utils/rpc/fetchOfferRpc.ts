@@ -84,7 +84,8 @@ export const fetchOfferRpc = async (
     let offerData;
     try {
       console.log(`Attempting to call showOffer(${offerId}) on contract ${yamContractAddress}...`);
-      offerData = await yamContract.callStatic.showOffer(offerId);
+      // Call showOffer directly (not callStatic) - matching yambyofferid.netlify.app approach
+      offerData = await yamContract.showOffer(offerId);
       console.log(`Successfully fetched offer ${offerId}:`, offerData);
     } catch (error: any) {
       console.error(`Error calling showOffer(${offerId}):`, {

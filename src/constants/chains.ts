@@ -38,7 +38,7 @@ export const CHAINS: Record<ChainsID, Chain> = {
     chainName: 'Gnosis Chain',
     logo: GnosisLogo,
     nativeCurrency: DAI,
-    rpcUrl: 'https://gnosis-rpc.publicnode.com',
+    rpcUrl: 'https://rpc.gnosischain.com',
     blockExplorerUrl: 'https://gnosisscan.io/',
     isTestnet: false,
     graphPrefixes: {
