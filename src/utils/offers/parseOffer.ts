@@ -61,9 +61,20 @@ export const parseOffer = (
             offer.offerToken.tokenType === 3
           ) {
             // For ERC20 tokens, use balance and allowance from the offer
-            // If not available, fall back to availableAmount (but this shouldn't happen with RPC)
-            balanceWallet = offer.balance?.amount ?? '0';
-            allowance = offer.allowance?.allowance ?? '0';
+            // If balance/allowance are not set in offer, use accountUserRealtoken as fallback
+            // (This can happen if the token type was incorrectly detected or if RPC didn't set them)
+            if (offer.balance?.amount && offer.allowance?.allowance) {
+              balanceWallet = offer.balance.amount;
+              allowance = offer.allowance.allowance;
+            } else if (accountUserRealtoken) {
+              // Fallback to accountUserRealtoken if offer.balance/allowance are not set
+              balanceWallet = accountUserRealtoken.amount ?? '0';
+              allowance = accountUserRealtoken.allowance ?? '0';
+            } else {
+              // Last resort: use availableAmount (but this shouldn't happen)
+              balanceWallet = offer.availableAmount;
+              allowance = offer.availableAmount;
+            }
             
             // Log for debugging
             console.log('parseOffer ERC20 token (type 2/3):', {
@@ -72,8 +83,10 @@ export const parseOffer = (
               tokenType: offer.offerToken.tokenType,
               balanceFromOffer: offer.balance?.amount,
               allowanceFromOffer: offer.allowance?.allowance,
-              balanceWallet,
-              allowance,
+              balanceFromAccountUser: accountUserRealtoken?.amount,
+              allowanceFromAccountUser: accountUserRealtoken?.allowance,
+              finalBalanceWallet: balanceWallet,
+              finalAllowance: allowance,
               availableAmount: offer.availableAmount,
             });
 
