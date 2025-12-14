@@ -24,9 +24,8 @@ export const fetchOfferRpc = async (
   prices: Price
 ): Promise<Offer | undefined> => {
   try {
-    const rpcProvider = provider instanceof JsonRpcProvider 
-      ? provider 
-      : getRpcProvider(chainId);
+    // Always use JsonRpcProvider for read-only calls to avoid signer issues
+    const rpcProvider = getRpcProvider(chainId);
     
     const chainConfig = CHAINS[chainId as ChainsID];
     const { address: yamContractAddress } = chainConfig.contracts.realTokenYamUpgradeable;
@@ -38,10 +37,10 @@ export const fetchOfferRpc = async (
       rpcProvider
     ) as RealTokenYamUpgradeable;
 
-    // Fetch offer data from contract
+    // Fetch offer data from contract using callStatic to ensure it's a read-only call
     let offerData;
     try {
-      offerData = await yamContract.showOffer(offerId);
+      offerData = await yamContract.callStatic.showOffer(offerId);
     } catch (error: any) {
       // Handle call revert exceptions (e.g., offer doesn't exist or was removed)
       if (error?.code === 'CALL_EXCEPTION' || 
