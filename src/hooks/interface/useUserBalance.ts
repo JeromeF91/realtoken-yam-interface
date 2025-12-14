@@ -2,10 +2,8 @@ import { useWeb3React } from "@web3-react/core";
 import { useQuery } from "react-query";
 import { REACT_QUERY_ERRORS } from "../../types/ReactQueryErrors";
 import { UserBalances } from "../../types/UserBalance";
-import { CHAINS, ChainsID } from "../../constants/chains";
-import { apiClient } from "../../utils/offers/getClientURL";
-import { gql } from "@apollo/client";
-import BigNumber from "bignumber.js";
+import { fetchUserBalancesRpc } from "../../utils/rpc/fetchUserBalancesRpc";
+import { useProperties } from "./useProperties";
 
 type UseUserBalance = () => {
     userBalancesAreLoading: boolean;
@@ -14,46 +12,23 @@ type UseUserBalance = () => {
 export const useUserBalance: UseUserBalance = () => {
 
     const { chainId, account } = useWeb3React();
+    const { properties } = useProperties();
 
     const { isLoading: userBalancesAreLoading, data: userBalances, isSuccess } = useQuery({
-        queryKey: ['userBalances', chainId, account],
+        queryKey: ['userBalances', chainId, account, properties?.length],
         meta: { errCode: REACT_QUERY_ERRORS.FETCH_USER_BALANCES },
-        enabled: !!chainId && !!account,
+        enabled: !!chainId && !!account && !!properties && properties.length > 0,
         queryFn: async (): Promise<UserBalances> => {
-            if(!chainId || !account) return {};
+            if(!chainId || !account || !properties) return {};
             
-            const chainDatas = CHAINS[chainId as ChainsID];
-            const prefix = chainDatas.graphPrefixes.realtoken;
-
-            const res = await apiClient.query({
-                query: gql`
-                query getBalances{
-                    ${prefix}{
-                        accountBalances(where: { account: "${account.toLowerCase()}" }, first: 1000){
-                        token{
-                            address
-                        }
-                        amount
-                        }
-                    }
-                    }
-                `,
-                // context: {
-                //     fetchOptions: {
-                //         signal: abortController.signal,
-                //     },
-                // }
-            });
-
-            const balances = res.data[prefix].accountBalances;
+            // Get token addresses from properties
+            const tokenAddresses = properties.map(prop => prop.contractAddress);
+            
+            // Fetch balances via RPC
+            const balances = await fetchUserBalancesRpc(account, chainId, tokenAddresses);
             console.log('USER BALANCES: ', balances);
 
-            const userBalances: UserBalances = {};
-            balances.forEach((balance: any) => {
-                userBalances[balance.token.address.toLowerCase()] = new BigNumber(balance.amount);
-            });
-
-            return userBalances;
+            return balances;
         }
     })
 
