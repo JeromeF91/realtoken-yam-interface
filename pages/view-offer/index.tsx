@@ -103,6 +103,18 @@ const ViewOfferPage = () => {
         if (fetchedOffer) {
           setOffer(fetchedOffer);
           setError(null);
+          
+          // Fetch property tokens for the offer
+          const fetchedPropertyTokens = [];
+          if (fetchedOffer.buyerTokenType === 1) {
+            const token = getPropertyToken(fetchedOffer.buyerTokenAddress);
+            if (token) fetchedPropertyTokens.push(token);
+          }
+          if (fetchedOffer.offerTokenType === 1) {
+            const token = getPropertyToken(fetchedOffer.offerTokenAddress);
+            if (token) fetchedPropertyTokens.push(token);
+          }
+          setPropertyTokens(fetchedPropertyTokens);
         } else {
           setError('Offer not found. Please check the offer ID.');
           setOffer(undefined);
@@ -119,7 +131,7 @@ const ViewOfferPage = () => {
     if (offerId && chainId && provider && account && propertiesToken && prices && wlProperties) {
       fetchOffer();
     }
-  }, [offerId, chainId, provider, account, propertiesToken, prices, wlProperties]);
+  }, [offerId, chainId, provider, account, propertiesToken, prices, wlProperties, getPropertyToken]);
 
   // Load property tokens when offer is available
   useEffect(() => {
