@@ -85,10 +85,10 @@ export const fetchOfferRpc = async (
     // showOffer returns: [seller, offerToken, buyerToken, buyer, price, amount]
     const [seller, offerTokenAddress, buyerTokenAddress, buyer, priceBN, amountBN] = offerData;
 
-    // Get token info for both tokens
+    // Get token info for both tokens using callStatic for read-only calls
     const [offerTokenInfo, buyerTokenInfo] = await Promise.all([
-      yamContract.tokenInfo(offerTokenAddress),
-      yamContract.tokenInfo(buyerTokenAddress),
+      yamContract.callStatic.tokenInfo(offerTokenAddress),
+      yamContract.callStatic.tokenInfo(buyerTokenAddress),
     ]);
 
     // tokenInfo returns: [tokenType, name, symbol]

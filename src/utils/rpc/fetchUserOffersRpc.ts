@@ -91,8 +91,8 @@ export const fetchUserOffersRpc = async (
       provider
     ) as RealTokenYamUpgradeable;
 
-    // Get total offer count
-    const offerCountBN = await yamContract.getOfferCount();
+    // Get total offer count using callStatic for read-only call
+    const offerCountBN = await yamContract.callStatic.getOfferCount();
     const offerCount = offerCountBN.toNumber();
     console.log('Total offers on chain:', offerCount);
 
@@ -262,7 +262,7 @@ export const fetchUserOffersRpc = async (
       const batch = missingTokens.slice(i, i + tokenInfoBatchSize);
       const promises = batch.map(async (tokenAddress) => {
         try {
-          const tokenInfo = await yamContract.tokenInfo(tokenAddress);
+          const tokenInfo = await yamContract.callStatic.tokenInfo(tokenAddress);
           const [tokenType, name, symbol] = tokenInfo;
           const info = {
             tokenType: tokenType.toNumber(),
