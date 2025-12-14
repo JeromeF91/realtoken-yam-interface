@@ -334,63 +334,54 @@ const ViewOfferPage = () => {
 
                     <Flex direction="column" gap={3}>
                       <Text fw={700}>Price</Text>
-                      {offer.offerTokenName && offer.buyerTokenName && offer.price ? (
+                      {offer.price ? (
                         (() => {
                           // Check if buyerToken is USDC (or USD-pegged stablecoin)
-                          const isBuyerTokenUSD = offer.buyerTokenName.toUpperCase().includes('USDC') || 
-                                                  offer.buyerTokenName.toUpperCase().includes('USD') ||
+                          const isBuyerTokenUSD = offer.buyerTokenName?.toUpperCase().includes('USDC') || 
+                                                  offer.buyerTokenName?.toUpperCase().includes('USD') ||
                                                   offer.buyerTokenSymbol?.toUpperCase().includes('USDC') ||
                                                   offer.buyerTokenSymbol?.toUpperCase().includes('USD');
+                          
+                          // Check if offerToken is USDC
+                          const isOfferTokenUSD = offer.offerTokenName?.toUpperCase().includes('USDC') || 
+                                                  offer.offerTokenName?.toUpperCase().includes('USD') ||
+                                                  offer.offerTokenSymbol?.toUpperCase().includes('USDC') ||
+                                                  offer.offerTokenSymbol?.toUpperCase().includes('USD');
                           
                           const priceBN = new BigNumber(offer.price);
                           
                           // If buyerToken is USD/USDC, show price as "X USD per 1 offerToken"
                           if (isBuyerTokenUSD && !priceBN.isZero() && priceBN.isFinite()) {
-                            // Format with appropriate decimal places based on magnitude
-                            let priceDisplay = priceBN.toFixed(6);
-                            // If price is very small, use scientific notation
-                            if (priceBN.isLessThan(0.000001)) {
-                              priceDisplay = priceBN.toExponential(2);
-                            } else if (priceBN.isLessThan(1)) {
-                              priceDisplay = priceBN.toFixed(6);
-                            } else {
-                              priceDisplay = priceBN.toFixed(2);
-                            }
-                            
                             return (
                               <Text>
-                                {`1 ${offer.offerTokenName} = ${priceDisplay} USD`}
+                                {`${priceBN.toFixed(2)} USD`}
                               </Text>
                             );
                           }
                           
-                          // Fallback: show both directions if price is valid
-                          if (!priceBN.isZero() && !priceBN.isNaN() && priceBN.isFinite()) {
-                            let priceDisplay = priceBN.toFixed(6);
-                            if (priceBN.isLessThan(0.000001)) {
-                              priceDisplay = priceBN.toExponential(2);
-                            } else if (priceBN.isLessThan(1)) {
-                              priceDisplay = priceBN.toFixed(6);
-                            } else {
-                              priceDisplay = priceBN.toFixed(4);
-                            }
-                            
+                          // If offerToken is USD/USDC, calculate inverse price
+                          if (isOfferTokenUSD && !priceBN.isZero() && priceBN.isFinite()) {
+                            const inversePrice = new BigNumber(1).dividedBy(priceBN);
                             return (
-                              <Stack gap={2}>
-                                <Text>
-                                  {`1 ${offer.offerTokenName} = ${priceDisplay} ${offer.buyerTokenName}`}
-                                </Text>
-                                <Text c="dimmed" size="sm">
-                                  {`1 ${offer.buyerTokenName} = ${new BigNumber(1).dividedBy(priceBN).toFixed(4)} ${offer.offerTokenName}`}
-                                </Text>
-                              </Stack>
+                              <Text>
+                                {`${inversePrice.toFixed(2)} USD`}
+                              </Text>
                             );
                           }
                           
                           // If price is 0 or invalid, show error
+                          if (priceBN.isZero() || priceBN.isNaN() || !priceBN.isFinite()) {
+                            return (
+                              <Text c="red" size="sm">
+                                Invalid price: {offer.price}
+                              </Text>
+                            );
+                          }
+                          
+                          // Fallback: show price as-is (shouldn't happen if one token is USD)
                           return (
-                            <Text c="red" size="sm">
-                              Invalid price: {offer.price}
+                            <Text>
+                              {`${priceBN.toFixed(2)} ${offer.buyerTokenName || 'tokens'}`}
                             </Text>
                           );
                         })()
