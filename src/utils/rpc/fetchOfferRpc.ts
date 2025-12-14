@@ -39,7 +39,22 @@ export const fetchOfferRpc = async (
     ) as RealTokenYamUpgradeable;
 
     // Fetch offer data from contract
-    const offerData = await yamContract.showOffer(offerId);
+    let offerData;
+    try {
+      offerData = await yamContract.showOffer(offerId);
+    } catch (error: any) {
+      // Handle call revert exceptions (e.g., offer doesn't exist or was removed)
+      if (error?.code === 'CALL_EXCEPTION' || 
+          error?.message?.includes('revert') || 
+          error?.error?.code === 'CALL_EXCEPTION' ||
+          error?.error?.code === -32000) {
+        console.warn(`Offer ${offerId} does not exist or was removed.`);
+        return undefined;
+      }
+      // Re-throw unexpected errors
+      throw error;
+    }
+    
     // showOffer returns: [seller, offerToken, buyerToken, buyer, price, amount]
     const [seller, offerTokenAddress, buyerTokenAddress, buyer, priceBN, amountBN] = offerData;
 
