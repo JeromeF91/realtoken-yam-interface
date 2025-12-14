@@ -69,13 +69,21 @@ export const getTokenInfo = async (
   provider: JsonRpcProvider
 ): Promise<{ decimals: number; name: string; symbol: string }> => {
   const contract = getERC20Contract(tokenAddress, provider);
+  // Use callStatic for read-only calls to ensure they work without a signer
   const [decimals, name, symbol] = await Promise.all([
-    contract.decimals(),
-    contract.name(),
-    contract.symbol(),
+    contract.callStatic.decimals().catch(() => contract.decimals()),
+    contract.callStatic.name().catch(() => contract.name()),
+    contract.callStatic.symbol().catch(() => contract.symbol()),
   ]);
-  return {
+  
+  console.log(`getTokenInfo for ${tokenAddress}:`, {
     decimals,
+    name,
+    symbol,
+  });
+  
+  return {
+    decimals: typeof decimals === 'number' ? decimals : decimals.toNumber(),
     name,
     symbol,
   };
