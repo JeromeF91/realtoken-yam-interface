@@ -11,7 +11,37 @@ import { Price } from '../../types/price';
 import { DataRealtokenType } from '../../types/offer/DataRealtokenType';
 import { parseOffer } from '../offers/parseOffer';
 import { getExtendedTokens } from '../../constants/GetPriceToken';
-import { getCache, setCache, getMultipleCache, setMultipleCache, isRedisAvailable } from './redisCache';
+
+/**
+ * Conditionally import Redis cache functions (server-side only)
+ * This prevents Next.js from bundling ioredis for the client
+ */
+const getRedisCacheFunctions = async () => {
+  if (typeof window !== 'undefined') {
+    // Client-side: return no-op functions
+    return {
+      getCache: async () => null,
+      setCache: async () => {},
+      getMultipleCache: async () => new Map(),
+      setMultipleCache: async () => {},
+      isRedisAvailable: async () => false,
+    };
+  }
+  
+  // Server-side: dynamically import Redis cache
+  try {
+    return await import('./redisCache');
+  } catch (error) {
+    console.error('Failed to load Redis cache:', error);
+    return {
+      getCache: async () => null,
+      setCache: async () => {},
+      getMultipleCache: async () => new Map(),
+      setMultipleCache: async () => {},
+      isRedisAvailable: async () => false,
+    };
+  }
+};
 
 /**
  * Delay function for rate limiting
@@ -68,8 +98,9 @@ export const fetchUserOffersRpc = async (
       return [];
     }
 
-    // Check if Redis is available
-    const useRedis = await isRedisAvailable();
+    // Load Redis cache functions (server-side only)
+    const redisCache = await getRedisCacheFunctions();
+    const useRedis = await redisCache.isRedisAvailable();
     console.log(`Using Redis cache: ${useRedis}`);
 
     // In-memory caches as fallback
@@ -149,7 +180,7 @@ export const fetchUserOffersRpc = async (
     // Try to load from Redis cache first
     if (useRedis) {
       const cacheKeys = tokenArray.map(token => `${CACHE_PREFIX.TOKEN_INFO}${chainId}:${token}`);
-      const cachedTokenInfo = await getMultipleCache<{ tokenType: number; name: string; symbol: string }>(cacheKeys);
+      const cachedTokenInfo = await redisCache.getMultipleCache<{ tokenType: number; name: string; symbol: string }>(cacheKeys);
       
       cachedTokenInfo.forEach((value, key) => {
         const tokenAddress = key.replace(`${CACHE_PREFIX.TOKEN_INFO}${chainId}:`, '');
@@ -196,13 +227,13 @@ export const fetchUserOffersRpc = async (
 
     // Cache token info in Redis
     if (useRedis && tokensToCache.length > 0) {
-      await setMultipleCache(tokensToCache, CACHE_TTL.TOKEN_INFO);
+      await redisCache.setMultipleCache(tokensToCache, CACHE_TTL.TOKEN_INFO);
     }
 
     // Step 3: Fetch decimals for unique tokens
     if (useRedis) {
       const cacheKeys = tokenArray.map(token => `${CACHE_PREFIX.TOKEN_DECIMALS}${chainId}:${token}`);
-      const cachedDecimals = await getMultipleCache<number>(cacheKeys);
+      const cachedDecimals = await redisCache.getMultipleCache<number>(cacheKeys);
       
       cachedDecimals.forEach((value, key) => {
         const tokenAddress = key.replace(`${CACHE_PREFIX.TOKEN_DECIMALS}${chainId}:`, '');
@@ -251,7 +282,7 @@ export const fetchUserOffersRpc = async (
 
     // Cache decimals in Redis
     if (useRedis && decimalsToCache.length > 0) {
-      await setMultipleCache(decimalsToCache, CACHE_TTL.TOKEN_DECIMALS);
+      await redisCache.setMultipleCache(decimalsToCache, CACHE_TTL.TOKEN_DECIMALS);
     }
 
     // Step 4: Collect unique account-token pairs for balance/allowance fetching
@@ -265,7 +296,7 @@ export const fetchUserOffersRpc = async (
     if (useRedis) {
       const accountTokenArray = Array.from(uniqueAccountTokens);
       const cacheKeys = accountTokenArray.map(key => `${CACHE_PREFIX.ACCOUNT_BALANCE}${chainId}:${key}`);
-      const cachedBalances = await getMultipleCache<DataRealtokenType>(cacheKeys);
+      const cachedBalances = await redisCache.getMultipleCache<DataRealtokenType>(cacheKeys);
       
       cachedBalances.forEach((value, key) => {
         const accountKey = key.replace(`${CACHE_PREFIX.ACCOUNT_BALANCE}${chainId}:`, '');
@@ -335,7 +366,7 @@ export const fetchUserOffersRpc = async (
 
     // Cache balances in Redis
     if (useRedis && balancesToCache.length > 0) {
-      await setMultipleCache(balancesToCache, CACHE_TTL.ACCOUNT_BALANCE);
+      await redisCache.setMultipleCache(balancesToCache, CACHE_TTL.ACCOUNT_BALANCE);
     }
 
     // Step 6: Process offers with cached data
