@@ -32,22 +32,47 @@ export const PropertyCard = ({ propertyToken, offer }: PropertyCardProps) => {
                     </div>
                     <Flex direction={"column"} gap={"sm"}>
                         { offer ?
-                            <OfferDeltaTable 
-                                offer={offer}
-                                offerPrice={offer.offerPrice !== undefined ? offer.offerPrice : (offer.price ? parseFloat(offer.price) : undefined)}
-                                offerYield={offer.offerYield !== undefined ? offer.offerYield : (() => {
-                                    // Calculate yield if not set: (netRentYearPerToken / offerPrice) * 100
-                                    if (propertyToken.netRentYearPerToken && offer.price) {
-                                        const offerPrice = parseFloat(offer.price);
-                                        if (offerPrice > 0) {
-                                            return (propertyToken.netRentYearPerToken / offerPrice) * 100;
+                            (() => {
+                                // Calculate offerPrice
+                                const calculatedOfferPrice = offer.offerPrice !== undefined 
+                                    ? offer.offerPrice 
+                                    : (offer.price ? parseFloat(offer.price) : undefined);
+                                
+                                // Calculate offerYield: (netRentYearPerToken / offerPrice) * 100
+                                const calculatedOfferYield = offer.offerYield !== undefined 
+                                    ? offer.offerYield 
+                                    : (() => {
+                                        if (propertyToken.netRentYearPerToken && calculatedOfferPrice) {
+                                            if (calculatedOfferPrice > 0) {
+                                                const yieldValue = (propertyToken.netRentYearPerToken / calculatedOfferPrice) * 100;
+                                                console.log('PropertyCard: Calculating offerYield', {
+                                                    netRentYearPerToken: propertyToken.netRentYearPerToken,
+                                                    offerPrice: calculatedOfferPrice,
+                                                    calculatedYield: yieldValue,
+                                                });
+                                                return yieldValue;
+                                            }
                                         }
-                                    }
-                                    return undefined;
-                                })()}
-                                officialPrice={propertyToken.officialPrice}
-                                officialYield={propertyToken.annualYield ? propertyToken.annualYield*100 : undefined}
-                            />
+                                        return undefined;
+                                    })();
+                                
+                                console.log('PropertyCard: Passing values to OfferDeltaTable', {
+                                    offerPrice: calculatedOfferPrice,
+                                    offerYield: calculatedOfferYield,
+                                    officialPrice: propertyToken.officialPrice,
+                                    officialYield: propertyToken.annualYield ? propertyToken.annualYield*100 : undefined,
+                                });
+                                
+                                return (
+                                    <OfferDeltaTable 
+                                        offer={offer}
+                                        offerPrice={calculatedOfferPrice}
+                                        offerYield={calculatedOfferYield}
+                                        officialPrice={propertyToken.officialPrice}
+                                        officialYield={propertyToken.annualYield ? propertyToken.annualYield*100 : undefined}
+                                    />
+                                );
+                            })()
                             :
                             <Skeleton height={15}/>
                         }
