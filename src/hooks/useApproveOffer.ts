@@ -21,10 +21,15 @@ type UseOffersComputedDatas = (
 export const useOffersComputedDatas: UseOffersComputedDatas = (offer, amount) => {
 
     const price = parseFloat(offer.price);
-    const priceInWei = new BigNumber(price.toString()).shiftedBy(Number(offer.buyerTokenDecimals));
+    // Note: offerToken and buyerToken are reversed in naming
+    // When buying: you're buying buyerToken (what seller offers), paying with offerToken (what you pay)
+    // So priceInWei should use offerTokenDecimals (what you pay with)
+    const priceInWei = new BigNumber(price.toString()).shiftedBy(Number(offer.offerTokenDecimals));
 
-    const amountInWei = new BigNumber(parseInt(new BigNumber(amount.toString()).shiftedBy(Number(offer.offerTokenDecimals)).toString()));
-    const buyerTokenAmount = new BigNumber(parseInt(amountInWei.multipliedBy(priceInWei).shiftedBy(-offer.offerTokenDecimals).toString()));
+    // amountInWei is how much buyerToken you're buying (what seller offers)
+    const amountInWei = new BigNumber(parseInt(new BigNumber(amount.toString()).shiftedBy(Number(offer.buyerTokenDecimals)).toString()));
+    // buyerTokenAmount is how much offerToken you need to pay (what you pay with)
+    const buyerTokenAmount = new BigNumber(parseInt(amountInWei.multipliedBy(priceInWei).shiftedBy(-offer.buyerTokenDecimals).toString()));
 
     return{
         amountInWei,
@@ -52,46 +57,12 @@ export const useApproveOffer: UseApproveOffer = (offer, amount) => {
 
     const realTokenYamUpgradeable = useContract(ContractsID.realTokenYamUpgradeable);
 
-    // Determine which token needs approval: when buying, you pay with buyerToken
-    // However, we need to check if buyerToken is actually a payment token (USDC, etc.)
-    // or if it's a property token. If buyerToken is a property token, we should check offerToken instead.
-    // USDC on Gnosis: 0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83
-    // USDC on Ethereum: 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
-    const USDC_GNOSIS = '0xddafbb505ad214d7b80b1f830fccc89b60fb7a83';
-    const USDC_ETHEREUM = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+    // When buying, you pay with offerToken (not buyerToken)
+    // The offerToken and buyerToken are reversed in the naming
+    // So we need to approve offerToken, not buyerToken
+    const tokenToApproveAddress = offer.offerTokenAddress;
     
-    // Check if buyerToken is USDC (payment token) or if offerToken is USDC
-    const isBuyerTokenUSDC = offer.buyerTokenAddress.toLowerCase() === USDC_GNOSIS.toLowerCase() ||
-                              offer.buyerTokenAddress.toLowerCase() === USDC_ETHEREUM.toLowerCase() ||
-                              offer.buyerTokenName?.toUpperCase().includes('USDC') ||
-                              offer.buyerTokenSymbol?.toUpperCase().includes('USDC');
-    
-    const isOfferTokenUSDC = offer.offerTokenAddress.toLowerCase() === USDC_GNOSIS.toLowerCase() ||
-                             offer.offerTokenAddress.toLowerCase() === USDC_ETHEREUM.toLowerCase() ||
-                             offer.offerTokenName?.toUpperCase().includes('USDC') ||
-                             offer.offerTokenSymbol?.toUpperCase().includes('USDC');
-    
-    // When buying, you need to approve the token you're paying with
-    // If offerToken is USDC, you're paying with USDC (offerToken)
-    // If buyerToken is USDC, you're paying with USDC (buyerToken)
-    // Otherwise, default to buyerToken (you pay with buyerToken)
-    let tokenToApproveAddress = offer.buyerTokenAddress;
-    
-    if (isOfferTokenUSDC) {
-      // If offerToken is USDC, you're paying with USDC (offerToken)
-      tokenToApproveAddress = offer.offerTokenAddress;
-      console.log("useApproveOffer: Using offerToken (USDC) for approval:", tokenToApproveAddress);
-    } else if (isBuyerTokenUSDC) {
-      // If buyerToken is USDC, you're paying with USDC (buyerToken)
-      tokenToApproveAddress = offer.buyerTokenAddress;
-      console.log("useApproveOffer: Using buyerToken (USDC) for approval:", tokenToApproveAddress);
-    } else {
-      // Default: you pay with buyerToken
-      tokenToApproveAddress = offer.buyerTokenAddress;
-      console.log("useApproveOffer: Using buyerToken (default) for approval:", tokenToApproveAddress);
-    }
-    
-    console.log("useApproveOffer: Token addresses:", {
+    console.log("useApproveOffer: Token addresses (offerToken and buyerToken are reversed):", {
         offerId: offer.offerId,
         buyerTokenAddress: offer.buyerTokenAddress,
         offerTokenAddress: offer.offerTokenAddress,
@@ -100,8 +71,7 @@ export const useApproveOffer: UseApproveOffer = (offer, amount) => {
         offerTokenName: offer.offerTokenName,
         buyerTokenSymbol: offer.buyerTokenSymbol,
         offerTokenSymbol: offer.offerTokenSymbol,
-        isBuyerTokenUSDC,
-        isOfferTokenUSDC,
+        note: "When buying, you pay with offerToken, so we approve offerToken",
     });
 
     const buyerToken = useMemo(() => getContract<CoinBridgeToken>(
