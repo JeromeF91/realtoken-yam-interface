@@ -456,6 +456,14 @@ const ViewOfferPage = () => {
                               </Text>
                             </Flex>
                             <Flex justify="space-between" align="center">
+                              <Text fw={700}>New Yield:</Text>
+                              <Text>
+                                {offer.offerYield !== undefined && offer.offerYield !== null
+                                  ? `${offer.offerYield.toFixed(2)}%`
+                                  : 'N/A'}
+                              </Text>
+                            </Flex>
+                            <Flex justify="space-between" align="center">
                               <Text fw={700}>Original Token Price:</Text>
                               <Text>
                                 {token.officialPrice !== undefined && token.officialPrice !== null
