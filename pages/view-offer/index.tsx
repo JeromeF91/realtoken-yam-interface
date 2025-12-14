@@ -131,11 +131,12 @@ const ViewOfferPage = () => {
     if (offerId && chainId && provider && account && propertiesToken && prices && wlProperties) {
       fetchOffer();
     }
-  }, [offerId, chainId, provider, account, propertiesToken, prices, wlProperties, getPropertyToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offerId, chainId, provider, account, propertiesToken, prices, wlProperties]);
 
-  // Load property tokens when offer is available
+  // Load property tokens when offer or propertiesToken changes
   useEffect(() => {
-    if (!offer || propertiesIsloading || propertyTokens.length > 0) return;
+    if (!offer || propertiesIsloading || !propertiesToken) return;
 
     const tokens: any[] = [];
     
@@ -149,10 +150,13 @@ const ViewOfferPage = () => {
       if (token) tokens.push(token);
     }
 
-    if (tokens.length > 0) {
+    // Only update if tokens changed to avoid infinite loop
+    if (tokens.length !== propertyTokens.length || 
+        tokens.some((t, i) => t?.contractAddress !== propertyTokens[i]?.contractAddress)) {
       setPropertyTokens(tokens);
     }
-  }, [offer, propertiesIsloading, getPropertyToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offer?.buyerTokenAddress, offer?.offerTokenAddress, offer?.buyerTokenType, offer?.offerTokenType, propertiesToken, propertiesIsloading]);
 
   const handleSearch = () => {
     if (!offerId) {
