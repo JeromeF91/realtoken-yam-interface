@@ -1,48 +1,80 @@
-import Redis from 'ioredis';
+// Only import Redis on the server side using dynamic imports
+// This prevents bundling Node.js modules for the client
 
 // Redis client singleton
-let redisClient: Redis | null = null;
+let Redis: any = null;
+let redisClient: any = null;
 
 /**
- * Get or create Redis client
+ * Check if we're on the server side
  */
-export const getRedisClient = (): Redis => {
+const isServer = typeof window === 'undefined';
+
+/**
+ * Get or create Redis client (server-side only)
+ */
+export const getRedisClient = async (): Promise<any> => {
+  // Only initialize Redis on the server
+  if (!isServer) {
+    return null;
+  }
+
+  if (!Redis) {
+    try {
+      // Dynamic import to prevent bundling for client
+      Redis = (await import('ioredis')).default;
+    } catch (error) {
+      console.error('Failed to import ioredis:', error);
+      return null;
+    }
+  }
+
   if (!redisClient) {
-    // Support both REDIS_URL and direct host:port format
-    const redisUrl = process.env.REDIS_URL || 
-      (process.env.REDIS_HOST && process.env.REDIS_PORT 
-        ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`
-        : 'redis://192.168.1.113:6379');
-    redisClient = new Redis(redisUrl, {
-      retryStrategy: (times) => {
-        // Retry with exponential backoff, max 3 retries
-        if (times > 3) {
-          return null; // Stop retrying
-        }
-        return Math.min(times * 50, 2000);
-      },
-      maxRetriesPerRequest: 3,
-      enableOfflineQueue: false, // Don't queue commands when offline
-    });
+    try {
+      const redisUrl = process.env.REDIS_URL || 
+        (process.env.REDIS_HOST && process.env.REDIS_PORT 
+          ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`
+          : 'redis://192.168.1.113:6379');
+      redisClient = new Redis(redisUrl, {
+        retryStrategy: (times: number) => {
+          // Retry with exponential backoff, max 3 retries
+          if (times > 3) {
+            return null; // Stop retrying
+          }
+          return Math.min(times * 50, 2000);
+        },
+        maxRetriesPerRequest: 3,
+        enableOfflineQueue: false, // Don't queue commands when offline
+      });
 
-    redisClient.on('error', (err) => {
-      console.error('Redis Client Error:', err);
-      // Don't throw, just log - fallback to no cache
-    });
+      redisClient.on('error', (err: Error) => {
+        console.error('Redis Client Error:', err);
+        // Don't throw, just log - fallback to no cache
+      });
 
-    redisClient.on('connect', () => {
-      console.log('Redis Client Connected');
-    });
+      redisClient.on('connect', () => {
+        console.log('Redis Client Connected');
+      });
+    } catch (error) {
+      console.error('Failed to create Redis client:', error);
+      return null;
+    }
   }
   return redisClient;
 };
 
 /**
- * Get value from Redis cache
+ * Get value from Redis cache (server-side only)
  */
 export const getCache = async <T>(key: string): Promise<T | null> => {
+  if (!isServer) {
+    return null;
+  }
+
   try {
-    const client = getRedisClient();
+    const client = await getRedisClient();
+    if (!client) return null;
+    
     const value = await client.get(key);
     if (value) {
       return JSON.parse(value) as T;
@@ -55,15 +87,21 @@ export const getCache = async <T>(key: string): Promise<T | null> => {
 };
 
 /**
- * Set value in Redis cache with TTL
+ * Set value in Redis cache with TTL (server-side only)
  */
 export const setCache = async (
   key: string,
   value: any,
   ttlSeconds: number = 300 // Default 5 minutes
 ): Promise<void> => {
+  if (!isServer) {
+    return;
+  }
+
   try {
-    const client = getRedisClient();
+    const client = await getRedisClient();
+    if (!client) return;
+    
     await client.setex(key, ttlSeconds, JSON.stringify(value));
   } catch (error) {
     console.error(`Redis setCache error for key ${key}:`, error);
@@ -72,14 +110,16 @@ export const setCache = async (
 };
 
 /**
- * Get multiple values from Redis cache
+ * Get multiple values from Redis cache (server-side only)
  */
 export const getMultipleCache = async <T>(keys: string[]): Promise<Map<string, T>> => {
   const result = new Map<string, T>();
-  if (keys.length === 0) return result;
+  if (keys.length === 0 || !isServer) return result;
 
   try {
-    const client = getRedisClient();
+    const client = await getRedisClient();
+    if (!client) return result;
+    
     const values = await client.mget(...keys);
     
     values.forEach((value, index) => {
@@ -99,16 +139,18 @@ export const getMultipleCache = async <T>(keys: string[]): Promise<Map<string, T
 };
 
 /**
- * Set multiple values in Redis cache with TTL
+ * Set multiple values in Redis cache with TTL (server-side only)
  */
 export const setMultipleCache = async (
   entries: Array<{ key: string; value: any }>,
   ttlSeconds: number = 300
 ): Promise<void> => {
-  if (entries.length === 0) return;
+  if (entries.length === 0 || !isServer) return;
 
   try {
-    const client = getRedisClient();
+    const client = await getRedisClient();
+    if (!client) return;
+    
     const pipeline = client.pipeline();
     
     entries.forEach(({ key, value }) => {
@@ -122,11 +164,15 @@ export const setMultipleCache = async (
 };
 
 /**
- * Delete cache entry
+ * Delete cache entry (server-side only)
  */
 export const deleteCache = async (key: string): Promise<void> => {
+  if (!isServer) return;
+
   try {
-    const client = getRedisClient();
+    const client = await getRedisClient();
+    if (!client) return;
+    
     await client.del(key);
   } catch (error) {
     console.error(`Redis deleteCache error for key ${key}:`, error);
@@ -134,15 +180,20 @@ export const deleteCache = async (key: string): Promise<void> => {
 };
 
 /**
- * Check if Redis is available
+ * Check if Redis is available (server-side only)
  */
 export const isRedisAvailable = async (): Promise<boolean> => {
+  if (!isServer) {
+    return false;
+  }
+
   try {
-    const client = getRedisClient();
+    const client = await getRedisClient();
+    if (!client) return false;
+    
     await client.ping();
     return true;
   } catch (error) {
     return false;
   }
 };
-
