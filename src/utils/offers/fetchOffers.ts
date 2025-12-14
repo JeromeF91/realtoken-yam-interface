@@ -61,6 +61,12 @@ export const getBigDataGraphRealtoken = async (
   });
   //console.log('DEBUG getBigDataGraphRealtoken data', data);
 
+  // Add null check to prevent errors
+  if (!data?.[graphNetworkPrefix]?.accountBalances) {
+    console.warn(`GraphQL returned null for ${graphNetworkPrefix}.accountBalances, returning empty array`);
+    return [];
+  }
+
   const accountBalances = data[graphNetworkPrefix].accountBalances;
 
   return accountBalances.map((accountBalance: DataRealtokenType) => {
@@ -116,8 +122,24 @@ export const fetchOffersTheGraph = (
         `,
       });
 
+      // Add null checks to prevent "Cannot read properties of null" errors
+      if (!activeOfferResult?.data?.[graphNetworkPrefix]?.global) {
+        console.error('GraphQL query returned null for global data:', {
+          graphNetworkPrefix,
+          data: activeOfferResult?.data,
+        });
+        reject(new Error(`Failed to fetch active offers count: GraphQL returned null for ${graphNetworkPrefix}.global`));
+        return;
+      }
+
       const offersToFetch = activeOfferResult.data[graphNetworkPrefix].global.activeOffersCount;
       console.log('Amount of offersToFetch: ', offersToFetch);
+      
+      if (!offersToFetch || offersToFetch === 0) {
+        console.log('No active offers found');
+        resolve([]);
+        return;
+      }
 
       const offersRes = await apiClient.query({
         query: gql`
@@ -165,6 +187,16 @@ export const fetchOffersTheGraph = (
         `,
       })
 
+      // Add null check for offers data
+      if (!offersRes?.data?.[graphNetworkPrefix]?.offers) {
+        console.error('GraphQL query returned null for offers data:', {
+          graphNetworkPrefix,
+          data: offersRes?.data,
+        });
+        reject(new Error(`Failed to fetch offers: GraphQL returned null for ${graphNetworkPrefix}.offers`));
+        return;
+      }
+
       const offers: OfferGraphQl[] = offersRes.data[graphNetworkPrefix].offers;
       console.log('offers: ', offers.length)
 
@@ -193,17 +225,24 @@ export const fetchOffersTheGraph = (
         (offer: OfferGraphQl) =>
           new Promise<Offer>(async (resolve, reject) => {
             try {
-              const accountUserRealtoken: DataRealtokenType =
+              const accountUserRealtoken: DataRealtokenType | undefined =
                 dataRealtoken.find(
                   (accountBalance: DataRealtokenType): boolean =>
                     accountBalance.id ===
                     offer.seller.address + '-' + offer.offerToken.address
-                )!;
+                );
+
+              // Provide default values if accountUserRealtoken is not found
+              const defaultAccountRealtoken: DataRealtokenType = {
+                id: offer.seller.address + '-' + offer.offerToken.address,
+                amount: '0',
+                allowance: '0',
+              };
 
               const offerData: Offer = await parseOffer(
                 account,
                 offer,
-                accountUserRealtoken,
+                accountUserRealtoken || defaultAccountRealtoken,
                 propertiesToken,
                 wlProperties,
                 prices,
