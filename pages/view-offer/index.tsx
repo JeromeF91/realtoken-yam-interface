@@ -260,24 +260,43 @@ const ViewOfferPage = () => {
                   )}
                   <OfferText
                     title={t("amount")}
-                    value={offer.amount}
+                    value={new BigNumber(offer.amount).shiftedBy(-Number(offer.offerTokenDecimals || 18)).toFixed(2)}
                   />
                   <OfferText
                     title="Available Amount"
-                    value={offer.availableAmount}
+                    value={new BigNumber(offer.availableAmount).shiftedBy(-Number(offer.offerTokenDecimals || 18)).toFixed(2)}
                   />
                   
                   <Flex direction="column" gap={3}>
                     <Text fw={700}>Price</Text>
                     {offer.offerTokenName && offer.buyerTokenName && offer.price ? (
                       <>
-                        <Text>{`1 "${offer.offerTokenName}" = ${offer.price} "${offer.buyerTokenName}"`}</Text>
-                        <Text>{`1 "${offer.buyerTokenName}" = ${new BigNumber(1).dividedBy(offer.price).toFixed(5)} ${offer.offerTokenName}`}</Text>
+                        <Text>
+                          {`1 ${offer.offerTokenName} = ${new BigNumber(offer.price).shiftedBy(-Number(offer.buyerTokenDecimals || 18)).toFixed(2)} ${offer.buyerTokenName}`}
+                          {offer.offerPrice && ` ($${parseFloat(offer.offerPrice.toString()).toFixed(2)})`}
+                        </Text>
+                        <Text>
+                          {`1 ${offer.buyerTokenName} = ${new BigNumber(1).dividedBy(new BigNumber(offer.price).shiftedBy(-Number(offer.buyerTokenDecimals || 18))).toFixed(5)} ${offer.offerTokenName}`}
+                        </Text>
                       </>
                     ) : (
                       <Skeleton height={25} width={400} />
                     )}
                   </Flex>
+                  
+                  {offer.priceDelta !== undefined && (
+                    <OfferText
+                      title="PriceDiff"
+                      value={`${(offer.priceDelta * 100).toFixed(2)}%`}
+                    />
+                  )}
+                  
+                  {offer.offerYield !== undefined && (
+                    <OfferText
+                      title="NewYield"
+                      value={`${offer.offerYield.toFixed(2)}%`}
+                    />
+                  )}
 
                   {offer.balanceWallet && (
                     <OfferText
