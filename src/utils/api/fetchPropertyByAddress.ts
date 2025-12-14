@@ -4,6 +4,7 @@ import { ChainsID } from '../../constants';
 
 /**
  * Fetch property information by contract address or UUID from the RealToken Community API
+ * Uses the single token endpoint: /v1/token/{uuid}
  */
 export const fetchPropertyByAddress = async (
   addressOrUuid: string,
@@ -15,82 +16,194 @@ export const fetchPropertyByAddress = async (
       console.warn('COMMUNITY_API_KEY is not set. API requests may fail.');
     }
 
-    const response = await axios.get<APIPropertiesToken[]>(
-      'https://api.realtoken.community/v1/token',
-      {
-        headers: {
-          'X-AUTH-REALT-TOKEN': apiKey,
-        },
-      }
-    );
-
-    const tokens: APIPropertiesToken[] = response.data;
     const addressLower = addressOrUuid.toLowerCase();
+    console.log(`[fetchPropertyByAddress] Fetching property for address/UUID: ${addressOrUuid} on chain ${chainId}`);
 
-    // Find property by UUID or contract address
-    const property = tokens.find((token) => {
-      // Check UUID
-      if (token.uuid.toLowerCase() === addressLower) {
-        return true;
-      }
+    // First, try to fetch directly using the UUID/address as the endpoint
+    try {
+      const singleTokenResponse = await axios.get<APIPropertiesToken>(
+        `https://api.realtoken.community/v1/token/${addressOrUuid}`,
+        {
+          headers: {
+            'X-AUTH-REALT-TOKEN': apiKey,
+            'accept': '*/*',
+          },
+        }
+      );
 
-      // Check contract addresses for the given chain
+      const property = singleTokenResponse.data;
+      console.log(`[fetchPropertyByAddress] Successfully fetched property from single token endpoint:`, {
+        uuid: property.uuid,
+        shortName: property.shortName,
+        tokenPrice: property.tokenPrice,
+        currency: property.currency,
+        netRentYearPerToken: property.netRentYearPerToken,
+        annualYield: property.netRentYearPerToken && property.tokenPrice 
+          ? (property.netRentYearPerToken / property.tokenPrice) * 100 
+          : undefined,
+      });
+
+      // Convert to PropertiesToken format
       const contractKey = getContractAddressKey(chainId);
-      if (contractKey) {
-        const contractAddress = token.blockchainAddresses[contractKey]?.contract?.toLowerCase();
-        if (contractAddress === addressLower) {
-          return true;
+      const contractAddress = contractKey
+        ? property.blockchainAddresses[contractKey]?.contract?.toLowerCase()
+        : undefined;
+
+      if (!contractAddress) {
+        console.warn(`[fetchPropertyByAddress] No contract address found for chain ${chainId} in property ${property.uuid}`);
+        // Try legacy fields
+        if (chainId === ChainsID.Ethereum && property.ethereumContract) {
+          contractAddress = property.ethereumContract.toLowerCase();
+        } else if (chainId === ChainsID.Gnosis && (property.gnosisContract || property.xDaiContract)) {
+          contractAddress = (property.gnosisContract || property.xDaiContract)?.toLowerCase();
         }
       }
 
-      // Also check legacy contract fields
-      if (chainId === ChainsID.Ethereum && token.ethereumContract?.toLowerCase() === addressLower) {
-        return true;
+      if (!contractAddress) {
+        console.warn(`[fetchPropertyByAddress] Could not determine contract address for chain ${chainId}`);
+        return null;
       }
-      if (chainId === ChainsID.Gnosis) {
-        if (token.gnosisContract?.toLowerCase() === addressLower || 
-            token.xDaiContract?.toLowerCase() === addressLower) {
+
+      const annualYield = property.netRentYearPerToken && property.tokenPrice
+        ? property.netRentYearPerToken / property.tokenPrice
+        : 0;
+
+      const result: PropertiesToken = {
+        uuid: property.uuid,
+        shortName: property.shortName,
+        fullName: property.fullName,
+        contractAddress: contractAddress,
+        officialPrice: property.tokenPrice,
+        currency: property.currency,
+        marketplaceLink: property.marketplaceLink,
+        imageLink: property.imageLink,
+        netRentYearPerToken: property.netRentYearPerToken ?? 0,
+        annualYield: annualYield,
+        tokenIdRules: property.tokenIdRules,
+      };
+
+      console.log(`[fetchPropertyByAddress] Converted property data:`, {
+        contractAddress: result.contractAddress,
+        officialPrice: result.officialPrice,
+        currency: result.currency,
+        annualYield: result.annualYield,
+        annualYieldPercent: result.annualYield ? (result.annualYield * 100).toFixed(2) + '%' : 'N/A',
+      });
+
+      return result;
+    } catch (singleTokenError: any) {
+      // If single token endpoint fails (404, etc.), fall back to fetching all tokens
+      console.log(`[fetchPropertyByAddress] Single token endpoint failed, falling back to all tokens:`, {
+        status: singleTokenError?.response?.status,
+        message: singleTokenError?.message,
+      });
+
+      const response = await axios.get<APIPropertiesToken[]>(
+        'https://api.realtoken.community/v1/token',
+        {
+          headers: {
+            'X-AUTH-REALT-TOKEN': apiKey,
+          },
+        }
+      );
+
+      const tokens: APIPropertiesToken[] = response.data;
+      console.log(`[fetchPropertyByAddress] Fetched ${tokens.length} tokens from all tokens endpoint`);
+
+      // Find property by UUID or contract address
+      const property = tokens.find((token) => {
+        // Check UUID
+        if (token.uuid.toLowerCase() === addressLower) {
           return true;
+        }
+
+        // Check contract addresses for the given chain
+        const contractKey = getContractAddressKey(chainId);
+        if (contractKey) {
+          const contractAddress = token.blockchainAddresses[contractKey]?.contract?.toLowerCase();
+          if (contractAddress === addressLower) {
+            return true;
+          }
+        }
+
+        // Also check legacy contract fields
+        if (chainId === ChainsID.Ethereum && token.ethereumContract?.toLowerCase() === addressLower) {
+          return true;
+        }
+        if (chainId === ChainsID.Gnosis) {
+          if (token.gnosisContract?.toLowerCase() === addressLower || 
+              token.xDaiContract?.toLowerCase() === addressLower) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+
+      if (!property) {
+        console.log(`[fetchPropertyByAddress] Property not found for address/UUID: ${addressOrUuid} on chain ${chainId}`);
+        return null;
+      }
+
+      console.log(`[fetchPropertyByAddress] Found property in all tokens list:`, {
+        uuid: property.uuid,
+        shortName: property.shortName,
+        tokenPrice: property.tokenPrice,
+        currency: property.currency,
+        netRentYearPerToken: property.netRentYearPerToken,
+      });
+
+      // Convert to PropertiesToken format
+      const contractKey = getContractAddressKey(chainId);
+      let contractAddress = contractKey
+        ? property.blockchainAddresses[contractKey]?.contract?.toLowerCase()
+        : undefined;
+
+      if (!contractAddress) {
+        console.warn(`[fetchPropertyByAddress] No contract address found for chain ${chainId} in property ${property.uuid}`);
+        // Try legacy fields
+        if (chainId === ChainsID.Ethereum && property.ethereumContract) {
+          contractAddress = property.ethereumContract.toLowerCase();
+        } else if (chainId === ChainsID.Gnosis && (property.gnosisContract || property.xDaiContract)) {
+          contractAddress = (property.gnosisContract || property.xDaiContract)?.toLowerCase();
         }
       }
 
-      return false;
-    });
+      if (!contractAddress) {
+        console.warn(`[fetchPropertyByAddress] Could not determine contract address for chain ${chainId}`);
+        return null;
+      }
 
-    if (!property) {
-      console.log(`Property not found for address/UUID: ${addressOrUuid} on chain ${chainId}`);
-      return null;
+      const annualYield = property.netRentYearPerToken && property.tokenPrice
+        ? property.netRentYearPerToken / property.tokenPrice
+        : 0;
+
+      const result: PropertiesToken = {
+        uuid: property.uuid,
+        shortName: property.shortName,
+        fullName: property.fullName,
+        contractAddress: contractAddress,
+        officialPrice: property.tokenPrice,
+        currency: property.currency,
+        marketplaceLink: property.marketplaceLink,
+        imageLink: property.imageLink,
+        netRentYearPerToken: property.netRentYearPerToken ?? 0,
+        annualYield: annualYield,
+        tokenIdRules: property.tokenIdRules,
+      };
+
+      console.log(`[fetchPropertyByAddress] Converted property data (fallback):`, {
+        contractAddress: result.contractAddress,
+        officialPrice: result.officialPrice,
+        currency: result.currency,
+        annualYield: result.annualYield,
+        annualYieldPercent: result.annualYield ? (result.annualYield * 100).toFixed(2) + '%' : 'N/A',
+      });
+
+      return result;
     }
-
-    // Convert to PropertiesToken format
-    const contractKey = getContractAddressKey(chainId);
-    const contractAddress = contractKey
-      ? property.blockchainAddresses[contractKey]?.contract?.toLowerCase()
-      : undefined;
-
-    if (!contractAddress) {
-      console.warn(`No contract address found for chain ${chainId} in property ${property.uuid}`);
-      return null;
-    }
-
-    return {
-      uuid: property.uuid,
-      shortName: property.shortName,
-      fullName: property.fullName,
-      contractAddress: contractAddress,
-      officialPrice: property.tokenPrice,
-      currency: property.currency,
-      marketplaceLink: property.marketplaceLink,
-      imageLink: property.imageLink,
-      netRentYearPerToken: property.netRentYearPerToken ?? 0,
-      annualYield:
-        property.netRentYearPerToken && property.tokenPrice
-          ? property.netRentYearPerToken / property.tokenPrice
-          : 0,
-      tokenIdRules: property.tokenIdRules,
-    };
   } catch (error: any) {
-    console.error('Failed to fetch property from community API:', {
+    console.error('[fetchPropertyByAddress] Failed to fetch property from community API:', {
       addressOrUuid,
       chainId,
       message: error?.message,
