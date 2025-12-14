@@ -52,7 +52,8 @@ const ShowOfferPage = () => {
   // Fetch offer when offerId changes
   useEffect(() => {
     const fetchOffer = async () => {
-      if (!offerId || !chainId || !provider || !account || !propertiesToken || !prices || !wlProperties) {
+      // wlProperties is optional - only used for accountWhitelisted flag
+      if (!offerId || !chainId || !provider || !account || !propertiesToken || !prices) {
         return;
       }
 
@@ -75,13 +76,14 @@ const ShowOfferPage = () => {
           return;
         }
         
+        // wlProperties is optional - pass empty array if not loaded yet
         const fetchedOffer = await fetchOfferRpc(
           provider,
           account,
           chainId,
           id,
           propertiesToken,
-          wlProperties,
+          wlProperties || [],
           prices
         );
 
@@ -107,10 +109,11 @@ const ShowOfferPage = () => {
       }
     };
 
-    if (offerId && chainId && provider && account && propertiesToken && prices && wlProperties) {
+    // Don't wait for wlProperties - it's only used for accountWhitelisted flag, not critical for viewing
+    if (offerId && chainId && provider && account && propertiesToken && prices) {
       fetchOffer();
     }
-  }, [offerId, chainId, provider, account, propertiesToken, prices, wlProperties]);
+  }, [offerId, chainId, provider, account, propertiesToken, prices]);
 
   const handleSearch = () => {
     if (!offerId) {

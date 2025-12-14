@@ -66,7 +66,8 @@ const ViewOfferPage = () => {
       if (!prices) console.log('Waiting for prices...');
       if (!wlProperties) console.log('Waiting for wlProperties...');
       
-      if (!chainId || !provider || !account || !propertiesToken || !prices || !wlProperties) {
+      // wlProperties is optional - only used for accountWhitelisted flag
+      if (!chainId || !provider || !account || !propertiesToken || !prices) {
         return;
       }
 
@@ -90,13 +91,14 @@ const ViewOfferPage = () => {
           return;
         }
         
+        // wlProperties is optional - pass empty array if not loaded yet
         const fetchedOffer = await fetchOfferRpc(
           provider,
           account,
           chainId,
           id,
           propertiesToken,
-          wlProperties,
+          wlProperties || [],
           prices
         );
 
@@ -128,11 +130,12 @@ const ViewOfferPage = () => {
       }
     };
 
-    if (offerId && chainId && provider && account && propertiesToken && prices && wlProperties) {
+    // Don't wait for wlProperties - it's only used for accountWhitelisted flag, not critical for viewing
+    if (offerId && chainId && provider && account && propertiesToken && prices) {
       fetchOffer();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offerId, chainId, provider, account, propertiesToken, prices, wlProperties]);
+  }, [offerId, chainId, provider, account, propertiesToken, prices]);
 
   // Load property tokens when offer or propertiesToken changes
   useEffect(() => {
