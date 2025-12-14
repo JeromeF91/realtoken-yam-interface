@@ -326,32 +326,54 @@ const ViewOfferPage = () => {
                       <Text>
                         {(() => {
                           // The amount from the contract is in offerToken smallest units
-                          // But we need to check if it's actually in buyerToken decimals
-                          // If offerToken is USDC (6 decimals) but amount is large, it might be in buyerToken decimals (18)
+                          // Check if offerToken is USDC or similar (6 decimals)
                           const offerTokenDecimals = Number(offer.offerTokenDecimals || 18);
                           const buyerTokenDecimals = Number(offer.buyerTokenDecimals || 18);
                           const amountBN = new BigNumber(offer.amount);
                           
-                          // Check if amount seems too large (suggests wrong decimals)
-                          // If amount / 10^offerTokenDecimals > 1e12, likely using wrong decimals
-                          const normalizedWithOfferDecimals = amountBN.shiftedBy(-offerTokenDecimals);
-                          const normalizedWithBuyerDecimals = amountBN.shiftedBy(-buyerTokenDecimals);
+                          // Check if offerToken is USDC or armmv3USDC (6 decimals)
+                          const isOfferTokenUSDC = offerTokenDecimals === 6 || 
+                                                   offer.offerTokenName?.toUpperCase().includes('USDC') ||
+                                                   offer.offerTokenSymbol?.toUpperCase().includes('USDC');
                           
-                          // Use buyerToken decimals if the amount seems unreasonably large
-                          // (e.g., > 1 billion tokens suggests wrong decimal normalization)
-                          const decimals = normalizedWithOfferDecimals.isGreaterThan(1e12) 
-                            ? buyerTokenDecimals 
-                            : offerTokenDecimals;
+                          // If offerToken is USDC (6 decimals), but amount is very large,
+                          // it might be stored in buyerToken decimals (18) instead
+                          let decimalsToUse = offerTokenDecimals;
                           
-                          const result = amountBN.shiftedBy(-decimals);
+                          if (isOfferTokenUSDC) {
+                            // Check if amount seems too large for 6 decimals
+                            const normalizedWith6Decimals = amountBN.shiftedBy(-6);
+                            const normalizedWith18Decimals = amountBN.shiftedBy(-18);
+                            
+                            // If normalized with 6 decimals is > 1e12, likely using 18 decimals
+                            if (normalizedWith6Decimals.isGreaterThan(1e12)) {
+                              decimalsToUse = 18;
+                              console.log('Quantity: Using 18 decimals for USDC token (amount too large for 6 decimals)');
+                            } else {
+                              decimalsToUse = 6;
+                              console.log('Quantity: Using 6 decimals for USDC token');
+                            }
+                          } else {
+                            // For non-USDC tokens, check if amount is too large
+                            const normalizedWithOfferDecimals = amountBN.shiftedBy(-offerTokenDecimals);
+                            const normalizedWithBuyerDecimals = amountBN.shiftedBy(-buyerTokenDecimals);
+                            
+                            // Use buyerToken decimals if the amount seems unreasonably large
+                            decimalsToUse = normalizedWithOfferDecimals.isGreaterThan(1e12) 
+                              ? buyerTokenDecimals 
+                              : offerTokenDecimals;
+                          }
+                          
+                          const result = amountBN.shiftedBy(-decimalsToUse);
                           
                           console.log('Quantity calculation:', {
                             rawAmount: offer.amount,
+                            offerTokenName: offer.offerTokenName,
+                            offerTokenSymbol: offer.offerTokenSymbol,
                             offerTokenDecimals,
                             buyerTokenDecimals,
-                            decimalsUsed: decimals,
-                            normalizedWithOfferDecimals: normalizedWithOfferDecimals.toString(),
-                            normalizedWithBuyerDecimals: normalizedWithBuyerDecimals.toString(),
+                            isOfferTokenUSDC,
+                            decimalsUsed: decimalsToUse,
                             result: result.toString(),
                           });
                           
