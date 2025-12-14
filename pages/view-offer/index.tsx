@@ -20,7 +20,6 @@ import { IconSearch, IconAlertCircle, IconInfoCircle } from '@tabler/icons';
 import { useTranslation } from 'react-i18next';
 import BigNumber from 'bignumber.js';
 
-import { ConnectedProvider } from 'src/providers/ConnectProvider';
 import { fetchOfferRpc } from 'src/utils/rpc/fetchOfferRpc';
 import { usePropertiesToken } from 'src/hooks/usePropertiesToken';
 import { usePrices } from 'src/hooks/interface/usePrices';
@@ -167,51 +166,50 @@ const ViewOfferPage = () => {
   const isConnected = !!account && !!provider && !!chainId;
 
   return (
-    <ConnectedProvider>
-      <Container size="lg" py="xl">
-        <Stack gap="xl">
-          <Title order={1}>View Offer by ID</Title>
-          
-          <Paper p="md" withBorder>
-            <Stack gap="md">
-              <TextInput
-                label="Offer ID"
-                placeholder="Enter offer ID (e.g., 123)"
-                value={offerId}
-                onChange={(e) => {
-                  setOfferId(e.target.value);
-                  setError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSearch();
-                  }
-                }}
-                rightSection={
-                  <Button
-                    onClick={handleSearch}
-                    disabled={!offerId || isLoading}
-                    loading={isLoading}
-                    leftSection={<IconSearch size={16} />}
-                  >
-                    Search
-                  </Button>
+    <Container size="lg" py="xl">
+      <Stack gap="xl">
+        <Title order={1}>View Offer by ID</Title>
+        
+        {!isConnected && (
+          <Alert icon={<IconInfoCircle size={16} />} color="blue" title="Wallet Not Connected">
+            Please connect your wallet to view offer details. Once connected, you can search for offers by ID.
+          </Alert>
+        )}
+        
+        <Paper p="md" withBorder>
+          <Stack gap="md">
+            <TextInput
+              label="Offer ID"
+              placeholder="Enter offer ID (e.g., 123)"
+              value={offerId}
+              onChange={(e) => {
+                setOfferId(e.target.value);
+                setError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && isConnected) {
+                  handleSearch();
                 }
-              />
-              
-              {!isConnected && (
-                <Alert icon={<IconInfoCircle size={16} />} color="blue">
-                  Please connect your wallet to view offer details. The offer ID input is ready: {offerId || 'enter an ID'}
-                </Alert>
-              )}
-              
-              {isConnected && chainId && (
-                <Alert icon={<IconInfoCircle size={16} />} color="green" variant="light">
-                  Connected to chain {chainId}. Ready to fetch offer {offerId || '(enter ID above)'}
-                </Alert>
-              )}
-            </Stack>
-          </Paper>
+              }}
+              rightSection={
+                <Button
+                  onClick={handleSearch}
+                  disabled={!offerId || isLoading || !isConnected}
+                  loading={isLoading}
+                  leftSection={<IconSearch size={16} />}
+                >
+                  Search
+                </Button>
+              }
+            />
+            
+            {isConnected && chainId && (
+              <Alert icon={<IconInfoCircle size={16} />} color="green" variant="light">
+                Connected to chain {chainId}. Ready to fetch offer {offerId || '(enter ID above)'}
+              </Alert>
+            )}
+          </Stack>
+        </Paper>
 
           {error && (
             <Alert icon={<IconAlertCircle size={16} />} color="red" title="Error">
@@ -331,7 +329,6 @@ const ViewOfferPage = () => {
           )}
         </Stack>
       </Container>
-    </ConnectedProvider>
   );
 };
 
