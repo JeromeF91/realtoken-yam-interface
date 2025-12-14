@@ -332,15 +332,30 @@ export const fetchOfferRpc = async (
         // We need to determine which decimals to use based on the token types
         price: (() => {
           // Determine which decimals to use for priceBN
-          // If offerToken is USDC (6 decimals), priceBN is likely in USDC decimals
+          // If offerToken is USDC (has 6 decimals and name/symbol contains USDC), priceBN is in USDC decimals
           // Otherwise, use buyerToken decimals
           let decimalsToUse = buyerTokenDecimals;
           
-          // Check if offerToken is USDC (has 6 decimals)
-          if (offerTokenDecimals === 6) {
-            // If offerToken is USDC, priceBN is likely in USDC decimals (6)
+          // Check if offerToken is USDC by name, symbol, or decimals
+          const isOfferTokenUSDC = offerTokenDecimals === 6 || 
+                                   offerTokenName?.toUpperCase().includes('USDC') ||
+                                   offerTokenSymbol?.toUpperCase().includes('USDC');
+          
+          if (isOfferTokenUSDC) {
+            // If offerToken is USDC, priceBN is in USDC decimals (6)
             decimalsToUse = 6;
-            console.log('Using offerToken decimals (6) for priceBN because offerToken is USDC');
+            console.log('Using offerToken decimals (6) for priceBN because offerToken is USDC', {
+              offerTokenName,
+              offerTokenSymbol,
+              offerTokenDecimals,
+            });
+          } else {
+            console.log('Using buyerToken decimals for priceBN', {
+              buyerTokenDecimals,
+              offerTokenName,
+              offerTokenSymbol,
+              offerTokenDecimals,
+            });
           }
           
           // priceBN is already the price per token, normalize by the appropriate decimals
@@ -349,7 +364,11 @@ export const fetchOfferRpc = async (
           console.log('Price calculation:', {
             priceBN: priceBN.toString(),
             amountBN: amountBN.toString(),
+            offerTokenName,
+            offerTokenSymbol,
             offerTokenDecimals,
+            buyerTokenName,
+            buyerTokenSymbol,
             buyerTokenDecimals,
             decimalsToUse,
             pricePerUnit: pricePerUnit.toString(),
