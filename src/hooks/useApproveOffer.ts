@@ -214,8 +214,10 @@ export const useApproveOffer: UseApproveOffer = (offer, amount) => {
     }
 
     useEffect(() => {
-        checkApproval();
-    },[offer, amount]);
+        if (offer && amount && buyerToken && realTokenYamUpgradeable && account) {
+            checkApproval();
+        }
+    },[offer, amount, buyerToken, realTokenYamUpgradeable, account, buyerTokenAmount]);
 
     return{
         approveNeeded: approveNeeded,
