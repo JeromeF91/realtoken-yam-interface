@@ -1,5 +1,6 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
-import { Contract, Interface } from '@ethersproject/contracts';
+import { Contract } from '@ethersproject/contracts';
+import { utils } from 'ethers';
 import BigNumber from 'bignumber.js';
 import { CHAINS, ChainsID } from '../../constants';
 import { realTokenYamUpgradeableABI, erc20ABI } from '../../abis';
@@ -123,7 +124,7 @@ export const fetchUserOffersRpc = async (
 
     // Step 1: Fetch all offers using multicall (single RPC call!)
     const userAddressLower = account.toLowerCase();
-    const contractInterface = new Interface(realTokenYamUpgradeableABI);
+    const contractInterface = new utils.Interface(realTokenYamUpgradeableABI);
     
     // Prepare all offer IDs
     const allOfferIds = Array.from({ length: offerCount }, (_, i) => i);

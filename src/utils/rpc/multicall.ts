@@ -1,5 +1,6 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
-import { Contract, Interface } from '@ethersproject/contracts';
+import { Contract } from '@ethersproject/contracts';
+import { utils } from 'ethers';
 
 /**
  * Multicall3 contract addresses (same address on all chains)
@@ -115,7 +116,7 @@ export const multicall = async (
 export const batchShowOffers = async (
   provider: JsonRpcProvider,
   contractAddress: string,
-  contractInterface: Interface,
+  contractInterface: utils.Interface,
   offerIds: number[]
 ): Promise<Array<{ success: boolean; data: any }>> => {
   if (offerIds.length === 0) {
