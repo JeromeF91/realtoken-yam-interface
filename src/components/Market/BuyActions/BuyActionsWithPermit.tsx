@@ -5,10 +5,10 @@ import { ActionIcon, Group, Popover, Text } from '@mantine/core';
 import { useModals } from '@mantine/modals';
 import { IconShoppingCart } from '@tabler/icons';
 import { useWeb3React } from '@web3-react/core';
+import { useQueryClient } from 'react-query';
 
 import { Offer } from 'src/types/offer/Offer';
 
-import { useOffers } from '../../../hooks/interface/useOffers';
 import { useProperties } from '../../../hooks/interface/useProperties';
 import { useWlProperties } from '../../../hooks/interface/useWlProperties';
 import { PropertiesToken } from '../../../types';
@@ -37,7 +37,12 @@ export const BuyActionsWithPermit: FC<BuyActions> = ({
   const { t } = useTranslation('modals');
   const { t: t1 } = useTranslation('buy', { keyPrefix: 'table' });
 
-  const { refetch: refreshOffers } = useOffers();
+  // Use queryClient to invalidate queries instead of calling useOffers()
+  // This prevents unnecessary fetching on pages like view-offer that only need a single offer
+  const queryClient = useQueryClient();
+  const refreshOffers = useCallback(() => {
+    queryClient.invalidateQueries(['offers']);
+  }, [queryClient]);
 
   const onOpenBuyModal = useCallback(
     (offer: Offer) => {
