@@ -337,39 +337,38 @@ export const fetchOfferRpc = async (
           // Otherwise, priceBN is in buyerToken decimals (usually 18)
           let decimalsToUse = buyerTokenDecimals;
           
-          // Check if offerToken is USDC
+          // Check if offerToken is USDC (check decimals first, then name/symbol)
           const isOfferTokenUSDC = offerTokenDecimals === 6 || 
-                                   offerTokenName?.toUpperCase().includes('USDC') ||
-                                   offerTokenSymbol?.toUpperCase().includes('USDC');
+                                   (offerTokenName && offerTokenName.toUpperCase().includes('USDC')) ||
+                                   (offerTokenSymbol && offerTokenSymbol.toUpperCase().includes('USDC'));
           
           // Check if buyerToken is USDC
           const isBuyerTokenUSDC = buyerTokenDecimals === 6 || 
-                                   buyerTokenName?.toUpperCase().includes('USDC') ||
-                                   buyerTokenSymbol?.toUpperCase().includes('USDC');
+                                   (buyerTokenName && buyerTokenName.toUpperCase().includes('USDC')) ||
+                                   (buyerTokenSymbol && buyerTokenSymbol.toUpperCase().includes('USDC'));
+          
+          console.log('USDC detection:', {
+            offerTokenName,
+            offerTokenSymbol,
+            offerTokenDecimals,
+            isOfferTokenUSDC,
+            buyerTokenName,
+            buyerTokenSymbol,
+            buyerTokenDecimals,
+            isBuyerTokenUSDC,
+          });
           
           // If offerToken is USDC, priceBN is in USDC decimals (6)
           // If buyerToken is USDC, priceBN is in USDC decimals (6)
           // Otherwise, use buyerToken decimals
           if (isOfferTokenUSDC) {
             decimalsToUse = 6;
-            console.log('Using 6 decimals for priceBN because offerToken is USDC', {
-              offerTokenName,
-              offerTokenSymbol,
-              offerTokenDecimals,
-            });
+            console.log('✓ Using 6 decimals for priceBN because offerToken is USDC');
           } else if (isBuyerTokenUSDC) {
             decimalsToUse = 6;
-            console.log('Using 6 decimals for priceBN because buyerToken is USDC', {
-              buyerTokenName,
-              buyerTokenSymbol,
-              buyerTokenDecimals,
-            });
+            console.log('✓ Using 6 decimals for priceBN because buyerToken is USDC');
           } else {
-            console.log('Using buyerToken decimals for priceBN', {
-              buyerTokenDecimals,
-              buyerTokenName,
-              buyerTokenSymbol,
-            });
+            console.log(`Using buyerToken decimals (${buyerTokenDecimals}) for priceBN`);
           }
           
           // priceBN is already the price per token, normalize by the appropriate decimals
