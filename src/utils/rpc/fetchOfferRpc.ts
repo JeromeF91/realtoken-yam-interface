@@ -80,12 +80,13 @@ export const fetchOfferRpc = async (
       console.warn('Could not get offer count:', countError);
     }
 
-    // Fetch offer data from contract using callStatic to ensure it's a read-only call
+    // Fetch offer data from contract - use callStatic for read-only calls (no signer needed)
     let offerData;
     try {
       console.log(`Attempting to call showOffer(${offerId}) on contract ${yamContractAddress}...`);
-      // Call showOffer directly (not callStatic) - matching yambyofferid.netlify.app approach
-      offerData = await yamContract.showOffer(offerId);
+      // Use callStatic to ensure it's a read-only call (no signer required)
+      // This matches the yambyofferid.netlify.app behavior when using JsonRpcProvider
+      offerData = await yamContract.callStatic.showOffer(offerId);
       console.log(`Successfully fetched offer ${offerId}:`, offerData);
     } catch (error: any) {
       console.error(`Error calling showOffer(${offerId}):`, {
@@ -94,6 +95,7 @@ export const fetchOfferRpc = async (
         error: error?.error,
         data: error?.data,
         transaction: error?.transaction,
+        stack: error?.stack,
       });
       
       // Handle call revert exceptions (e.g., offer doesn't exist or was removed)
@@ -113,62 +115,57 @@ export const fetchOfferRpc = async (
     // showOffer returns: [seller, offerToken, buyerToken, buyer, price, amount]
     const [seller, offerTokenAddress, buyerTokenAddress, buyer, priceBN, amountBN] = offerData;
 
-    // Get token info for both tokens using callStatic for read-only calls
-    // Handle errors in case tokenInfo fails for a token (e.g., token not whitelisted)
+    // Get token info - try tokenInfo first, but fallback to ERC20 if it fails
+    // This is critical - if tokenInfo fails, we should still be able to display the offer
     let offerTokenInfo, buyerTokenInfo;
+    
+    const getTokenInfoWithFallback = async (tokenAddress: string, tokenName: string) => {
+      try {
+        // Try tokenInfo first (works for whitelisted tokens)
+        const info = await yamContract.callStatic.tokenInfo(tokenAddress);
+        console.log(`Successfully fetched ${tokenName} via tokenInfo`);
+        return info;
+      } catch (error: any) {
+        console.warn(`tokenInfo failed for ${tokenName} ${tokenAddress}, using ERC20 fallback:`, error?.message);
+        // Fallback: get token info directly from ERC20 contract
+        try {
+          const erc20Info = await getTokenInfo(tokenAddress, rpcProvider);
+          // Try to get tokenType from contract
+          let tokenType = 3; // Default to ERC20
+          try {
+            const tokenTypeBN = await yamContract.callStatic.getTokenType(tokenAddress);
+            tokenType = tokenTypeBN.toNumber();
+          } catch (e) {
+            console.warn(`Could not get tokenType for ${tokenName}, using default 3`);
+          }
+          // Return in tokenInfo format: [tokenType, name, symbol]
+          return [
+            { toNumber: () => tokenType } as any,
+            erc20Info.name,
+            erc20Info.symbol,
+          ];
+        } catch (erc20Error: any) {
+          console.error(`Failed to get ERC20 info for ${tokenName} ${tokenAddress}:`, erc20Error);
+          // Last resort: return minimal info
+          return [
+            { toNumber: () => 3 } as any,
+            'Unknown Token',
+            'UNKNOWN',
+          ];
+        }
+      }
+    };
+    
+    // Fetch both token infos in parallel with fallback handling
     try {
       [offerTokenInfo, buyerTokenInfo] = await Promise.all([
-        yamContract.callStatic.tokenInfo(offerTokenAddress),
-        yamContract.callStatic.tokenInfo(buyerTokenAddress),
+        getTokenInfoWithFallback(offerTokenAddress, 'offerToken'),
+        getTokenInfoWithFallback(buyerTokenAddress, 'buyerToken'),
       ]);
-    } catch (tokenInfoError: any) {
-      console.warn(`tokenInfo failed, trying individually. Error:`, tokenInfoError);
-      // Try to get token info individually to see which one fails
-      try {
-        offerTokenInfo = await yamContract.callStatic.tokenInfo(offerTokenAddress);
-        console.log(`Successfully fetched offerTokenInfo:`, offerTokenInfo);
-      } catch (offerTokenError: any) {
-        console.warn(`tokenInfo failed for offerToken ${offerTokenAddress}, using fallback. Error:`, offerTokenError);
-        // Fallback: get token info directly from ERC20 contract
-        const offerTokenERC20Info = await getTokenInfo(offerTokenAddress, rpcProvider);
-        // tokenInfo format: [tokenType, name, symbol]
-        // We'll use tokenType 3 (ERC20) as fallback, or try to get it from the contract
-        let tokenType = 3; // Default to ERC20
-        try {
-          // Try to get tokenType from contract if possible
-          const tokenTypeBN = await yamContract.callStatic.getTokenType(offerTokenAddress);
-          tokenType = tokenTypeBN.toNumber();
-        } catch (e) {
-          console.warn('Could not get tokenType, using default 3');
-        }
-        offerTokenInfo = [
-          { toNumber: () => tokenType } as any,
-          offerTokenERC20Info.name,
-          offerTokenERC20Info.symbol,
-        ];
-      }
-      
-      try {
-        buyerTokenInfo = await yamContract.callStatic.tokenInfo(buyerTokenAddress);
-        console.log(`Successfully fetched buyerTokenInfo:`, buyerTokenInfo);
-      } catch (buyerTokenError: any) {
-        console.warn(`tokenInfo failed for buyerToken ${buyerTokenAddress}, using fallback. Error:`, buyerTokenError);
-        // Fallback: get token info directly from ERC20 contract
-        const buyerTokenERC20Info = await getTokenInfo(buyerTokenAddress, rpcProvider);
-        // tokenInfo format: [tokenType, name, symbol]
-        let tokenType = 3; // Default to ERC20
-        try {
-          const tokenTypeBN = await yamContract.callStatic.getTokenType(buyerTokenAddress);
-          tokenType = tokenTypeBN.toNumber();
-        } catch (e) {
-          console.warn('Could not get tokenType, using default 3');
-        }
-        buyerTokenInfo = [
-          { toNumber: () => tokenType } as any,
-          buyerTokenERC20Info.name,
-          buyerTokenERC20Info.symbol,
-        ];
-      }
+    } catch (error: any) {
+      console.error('Critical error fetching token info:', error);
+      // Don't fail completely - we can still show the offer with basic info
+      throw new Error(`Failed to fetch token information: ${error?.message}`);
     }
 
     // tokenInfo returns: [tokenType, name, symbol]
@@ -262,9 +259,21 @@ export const fetchOfferRpc = async (
     offer.hasPropertyToken = hasPropertyToken ? true : false;
 
     return offer;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching offer via RPC:', error);
-    return undefined;
+    console.error('Error details:', {
+      message: error?.message,
+      code: error?.code,
+      stack: error?.stack,
+      error: error?.error,
+    });
+    // Don't return undefined for unexpected errors - throw so we can see what's wrong
+    if (error?.message?.includes('token information')) {
+      // This is a known error we're handling
+      return undefined;
+    }
+    // Re-throw to see the actual error
+    throw error;
   }
 };
 

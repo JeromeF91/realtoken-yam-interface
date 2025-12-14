@@ -94,7 +94,13 @@ const ShowOfferPage = () => {
         }
       } catch (err: any) {
         console.error('Error fetching offer:', err);
-        setError(err?.message || 'Failed to fetch offer. Please try again.');
+        console.error('Full error details:', {
+          message: err?.message,
+          code: err?.code,
+          stack: err?.stack,
+          error: err?.error,
+        });
+        setError(err?.message || 'Failed to fetch offer. Please try again. Check console for details.');
         setOffer(undefined);
       } finally {
         setIsLoading(false);
