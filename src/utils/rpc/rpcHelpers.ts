@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from '@ethersproject/providers';
+import { JsonRpcProvider, Network } from '@ethersproject/providers';
 import { Contract } from '@ethersproject/contracts';
 import { CHAINS, ChainsID } from '../../constants';
 import { erc20ABI } from '../../abis';
@@ -6,14 +6,22 @@ import { Erc20 } from '../../abis/types/Erc20';
 import BigNumber from 'bignumber.js';
 
 /**
- * Get an RPC provider for a given chain
+ * Get an RPC provider for a given chain with explicit network configuration
  */
 export const getRpcProvider = (chainId: number): JsonRpcProvider => {
   const chain = CHAINS[chainId as ChainsID];
   if (!chain) {
     throw new Error(`Unsupported chainId: ${chainId}`);
   }
-  return new JsonRpcProvider(chain.rpcUrl);
+  
+  // Create network object with explicit chainId to avoid auto-detection issues
+  const network: Network = {
+    chainId,
+    name: chain.chainName,
+  };
+  
+  // Pass network explicitly to avoid "could not detect network" errors
+  return new JsonRpcProvider(chain.rpcUrl, network);
 };
 
 /**

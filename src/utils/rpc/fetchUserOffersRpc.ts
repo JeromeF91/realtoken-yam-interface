@@ -1,5 +1,5 @@
 import { JsonRpcProvider } from '@ethersproject/providers';
-import { Contract } from '@ethersproject/contracts';
+import { Contract, Interface } from '@ethersproject/contracts';
 import BigNumber from 'bignumber.js';
 import { CHAINS, ChainsID } from '../../constants';
 import { realTokenYamUpgradeableABI, erc20ABI } from '../../abis';
@@ -11,6 +11,7 @@ import { Price } from '../../types/price';
 import { DataRealtokenType } from '../../types/offer/DataRealtokenType';
 import { parseOffer } from '../offers/parseOffer';
 import { getExtendedTokens } from '../../constants/GetPriceToken';
+import { batchShowOffers } from './multicall';
 
 /**
  * Conditionally import Redis cache functions (server-side only)
@@ -108,8 +109,7 @@ export const fetchUserOffersRpc = async (
     const tokenDecimalsCache = new Map<string, number>();
     const accountRealtokenMap = new Map<string, DataRealtokenType>();
 
-    // Fetch offers in small batches and filter for user's offers
-    const batchSize = 20; // Smaller batches for my-offers
+    // Fetch offers using multicall (batched RPC calls)
     const userOffers: Offer[] = [];
     const offerDataArray: Array<{
       offerId: number;
@@ -121,54 +121,107 @@ export const fetchUserOffersRpc = async (
       amount: string;
     }> = [];
 
-    // Step 1: Fetch offers and filter for user's offers only
+    // Step 1: Fetch all offers using multicall (single RPC call!)
     const userAddressLower = account.toLowerCase();
-    for (let i = 0; i < offerCount; i += batchSize) {
-      const batchEnd = Math.min(i + batchSize, offerCount);
-      const batchPromises: Promise<void>[] = [];
-
-      for (let offerId = i; offerId < batchEnd; offerId++) {
-        batchPromises.push(
-          (async () => {
-            try {
-              const offerData = await yamContract.showOffer(offerId);
-              const [seller, offerTokenAddress, buyerTokenAddress, buyer, priceBN, amountBN] = offerData;
-              
-              // Only process if this is the user's offer
-              if (seller.toLowerCase() === userAddressLower) {
-                offerDataArray.push({
-                  offerId,
-                  seller: seller.toLowerCase(),
-                  offerTokenAddress: offerTokenAddress.toLowerCase(),
-                  buyerTokenAddress: buyerTokenAddress.toLowerCase(),
-                  buyer: buyer.toLowerCase(),
-                  price: priceBN.toString(),
-                  amount: amountBN.toString(),
-                });
-              }
-            } catch (error: any) {
-              // Skip offers that don't exist or were removed
-              // This is expected - offer IDs might be removed but count might not be updated immediately
-              if (error?.code === 'CALL_EXCEPTION' || 
-                  error?.message?.includes('revert') || 
-                  error?.error?.code === 'CALL_EXCEPTION') {
-                // Silently skip - offer doesn't exist (this is normal)
-                return;
-              }
-              // Log unexpected errors only
-              console.warn(`Unexpected error fetching offer ${offerId}:`, error?.message || error);
-            }
-          })()
-        );
-      }
-
-      await Promise.all(batchPromises);
-      
-      // Rate limiting: delay between batches
-      if (i + batchSize < offerCount) {
-        await delay(150); // Slightly longer delay
+    const contractInterface = new Interface(realTokenYamUpgradeableABI);
+    
+    // Prepare all offer IDs
+    const allOfferIds = Array.from({ length: offerCount }, (_, i) => i);
+    
+    // Use multicall to fetch all offers in a single RPC call
+    // Split into chunks if too many (multicall has limits, typically 100-200 calls)
+    const multicallBatchSize = 100; // Safe limit for most RPC providers
+    const offerResults: Array<{ offerId: number; success: boolean; data: any }> = [];
+    
+    // Ensure provider is ready before making calls
+    try {
+      await provider.getNetwork();
+    } catch (networkError: any) {
+      console.error('Provider network error:', networkError);
+      // If network detection fails, the provider should still work with explicit network config
+      // But log the error for debugging
+      if (networkError?.code === 'NETWORK_ERROR') {
+        console.warn('Network detection failed, but continuing with explicit network configuration');
       }
     }
+    
+    for (let i = 0; i < allOfferIds.length; i += multicallBatchSize) {
+      const batchIds = allOfferIds.slice(i, i + multicallBatchSize);
+      
+      try {
+        const batchResults = await batchShowOffers(
+          provider,
+          yamContractAddress,
+          contractInterface,
+          batchIds
+        );
+        
+        // Map results back to offer IDs
+        batchResults.forEach((result, index) => {
+          offerResults.push({
+            offerId: batchIds[index],
+            success: result.success,
+            data: result.data,
+          });
+        });
+      } catch (error: any) {
+        // Handle network errors gracefully
+        if (error?.code === 'NETWORK_ERROR' || error?.message?.includes('could not detect network')) {
+          console.error(`Network error fetching offers batch ${i}-${i + batchIds.length}:`, error?.message);
+          // Mark all offers in this batch as failed
+          batchIds.forEach(offerId => {
+            offerResults.push({
+              offerId,
+              success: false,
+              data: null,
+            });
+          });
+        } else {
+          console.error(`Error fetching offers batch ${i}-${i + batchIds.length}:`, error);
+          // Mark all offers in this batch as failed
+          batchIds.forEach(offerId => {
+            offerResults.push({
+              offerId,
+              success: false,
+              data: null,
+            });
+          });
+        }
+      }
+      
+      // Small delay between multicall batches if needed
+      if (i + multicallBatchSize < allOfferIds.length) {
+        await delay(50);
+      }
+    }
+    
+    // Filter for user's offers and extract data
+    offerResults.forEach(({ offerId, success, data }) => {
+      if (!success || !data) {
+        // Skip failed calls (offers that don't exist)
+        return;
+      }
+      
+      try {
+        const [seller, offerTokenAddress, buyerTokenAddress, buyer, priceBN, amountBN] = data;
+        
+        // Only process if this is the user's offer
+        if (seller.toLowerCase() === userAddressLower) {
+          offerDataArray.push({
+            offerId,
+            seller: seller.toLowerCase(),
+            offerTokenAddress: offerTokenAddress.toLowerCase(),
+            buyerTokenAddress: buyerTokenAddress.toLowerCase(),
+            buyer: buyer.toLowerCase(),
+            price: priceBN.toString(),
+            amount: amountBN.toString(),
+          });
+        }
+      } catch (error) {
+        // Skip invalid data
+        console.warn(`Error processing offer ${offerId}:`, error);
+      }
+    });
 
     console.log(`Found ${offerDataArray.length} offers for user ${account}`);
 
