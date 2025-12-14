@@ -325,9 +325,37 @@ const ViewOfferPage = () => {
                       <Text fw={700}>Quantity</Text>
                       <Text>
                         {(() => {
-                          const decimals = Number(offer.offerTokenDecimals || 18);
+                          // The amount from the contract is in offerToken smallest units
+                          // But we need to check if it's actually in buyerToken decimals
+                          // If offerToken is USDC (6 decimals) but amount is large, it might be in buyerToken decimals (18)
+                          const offerTokenDecimals = Number(offer.offerTokenDecimals || 18);
+                          const buyerTokenDecimals = Number(offer.buyerTokenDecimals || 18);
                           const amountBN = new BigNumber(offer.amount);
-                          return amountBN.shiftedBy(-decimals).toFixed(2);
+                          
+                          // Check if amount seems too large (suggests wrong decimals)
+                          // If amount / 10^offerTokenDecimals > 1e12, likely using wrong decimals
+                          const normalizedWithOfferDecimals = amountBN.shiftedBy(-offerTokenDecimals);
+                          const normalizedWithBuyerDecimals = amountBN.shiftedBy(-buyerTokenDecimals);
+                          
+                          // Use buyerToken decimals if the amount seems unreasonably large
+                          // (e.g., > 1 billion tokens suggests wrong decimal normalization)
+                          const decimals = normalizedWithOfferDecimals.isGreaterThan(1e12) 
+                            ? buyerTokenDecimals 
+                            : offerTokenDecimals;
+                          
+                          const result = amountBN.shiftedBy(-decimals);
+                          
+                          console.log('Quantity calculation:', {
+                            rawAmount: offer.amount,
+                            offerTokenDecimals,
+                            buyerTokenDecimals,
+                            decimalsUsed: decimals,
+                            normalizedWithOfferDecimals: normalizedWithOfferDecimals.toString(),
+                            normalizedWithBuyerDecimals: normalizedWithBuyerDecimals.toString(),
+                            result: result.toString(),
+                          });
+                          
+                          return result.toFixed(4);
                         })()}
                       </Text>
                     </Flex>
