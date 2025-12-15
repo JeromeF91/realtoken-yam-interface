@@ -433,15 +433,34 @@ const ViewOfferPage = () => {
                       <Text fw={700}>Quantity</Text>
                       <Text>
                         {(() => {
-                          // The amount from the contract represents how much buyerToken is being sold
-                          // Quantity represents how much buyerToken the buyer will receive
-                          const buyerTokenDecimals = Number(offer.buyerTokenDecimals || 18);
-                          const amountBN = new BigNumber(offer.amount);
-                          
-                          // Use buyerTokenDecimals to normalize the amount
-                          const result = amountBN.shiftedBy(-buyerTokenDecimals);
-                          
-                          return result.toFixed(4);
+                          try {
+                            // The amount from the contract represents how much buyerToken is being sold
+                            // Quantity represents how much buyerToken the buyer will receive
+                            const buyerTokenDecimals = Number(offer.buyerTokenDecimals || 18);
+                            
+                            // Ensure amount is a string or number
+                            const amountStr = offer.amount?.toString() || '0';
+                            const amountBN = new BigNumber(amountStr);
+                            
+                            // Validate decimals
+                            if (isNaN(buyerTokenDecimals) || buyerTokenDecimals < 0 || buyerTokenDecimals > 18) {
+                              console.warn('Invalid buyerTokenDecimals:', offer.buyerTokenDecimals, 'using default 18');
+                              const result = amountBN.shiftedBy(-18);
+                              return result.toFixed(4);
+                            }
+                            
+                            // Use buyerTokenDecimals to normalize the amount
+                            const result = amountBN.shiftedBy(-buyerTokenDecimals);
+                            
+                            // Format with up to 4 decimal places, removing trailing zeros
+                            return result.toFixed(4).replace(/\.?0+$/, '');
+                          } catch (error) {
+                            console.error('Error calculating quantity:', error, {
+                              amount: offer.amount,
+                              buyerTokenDecimals: offer.buyerTokenDecimals,
+                            });
+                            return '0';
+                          }
                         })()}
                       </Text>
                     </Flex>
