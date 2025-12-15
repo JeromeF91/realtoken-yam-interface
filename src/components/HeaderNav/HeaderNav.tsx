@@ -16,7 +16,8 @@ export const HeaderNav: FC = () => {
 
   return (
       <Flex className={classes.container} gap={100} justify={'center'}>
-        <Text
+        {/* All navigation hidden except View Offer */}
+        {/* <Text
           size={'xl'}
           fw={700}
           className={classes.link}
@@ -24,7 +25,7 @@ export const HeaderNav: FC = () => {
           onClick={() => router.push('/')}
         >
           {t('titleCat1')}
-        </Text>
+        </Text> */}
         {/* Hidden: Your Offers menu item */}
         {/* <Text
           size={'xl'}
@@ -45,7 +46,8 @@ export const HeaderNav: FC = () => {
         >
           {t('historic')}
         </Text> */}
-        { isRole(role,[USER_ROLE.MODERATOR,USER_ROLE.ADMIN]) ? 
+        {/* Hidden: Admin menu item */}
+        {/* { isRole(role,[USER_ROLE.MODERATOR,USER_ROLE.ADMIN]) ? 
           <Text
             size={'xl'}
             fw={700}
@@ -57,7 +59,7 @@ export const HeaderNav: FC = () => {
           </Text>
             :
             undefined
-        }
+        } */}
     </Flex>
   );
 };

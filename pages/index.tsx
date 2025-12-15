@@ -1,39 +1,34 @@
 import { NextPage } from 'next';
 import { useRouter } from 'next/router';
-import 'src/components/Market';
-import { MarketTableFilter } from 'src/components/Market/Filters';
-import { Flex, Group, Button } from '@mantine/core';
-import { IconPlus, IconEye } from '@tabler/icons';
-import Display from 'src/components/Display/Display';
+import { useEffect } from 'react';
+import { Flex, Button, Container, Title, Text } from '@mantine/core';
+import { IconEye } from '@tabler/icons';
 import { ConnectedProvider } from 'src/providers/ConnectProvider';
 
 const HomePage: NextPage = () => {
   const router = useRouter();
 
+  // Redirect to view-offer page
+  useEffect(() => {
+    router.push('/view-offer');
+  }, [router]);
+
   return (
     <ConnectedProvider>
-      <Flex my={"xl"} direction={"column"} gap={"md"}>
-        <Group justify="flex-end" mb="sm">
-          <Button
-            leftSection={<IconPlus size={18} />}
-            onClick={() => router.push('/create-offer')}
-            color="brand"
-            variant="light"
-          >
-            Create Offer
-          </Button>
+      <Container size="md" py="xl">
+        <Flex direction="column" align="center" gap="md" justify="center" style={{ minHeight: '50vh' }}>
+          <Title order={1}>YAM Interface</Title>
+          <Text c="dimmed" mb="lg">Redirecting to View Offer page...</Text>
           <Button
             leftSection={<IconEye size={18} />}
             onClick={() => router.push('/view-offer')}
             color="brand"
-            variant="light"
+            size="lg"
           >
             View Offer
           </Button>
-        </Group>
-        <MarketTableFilter />
-        <Display />
-      </Flex>
+        </Flex>
+      </Container>
     </ConnectedProvider>
   );
 };
