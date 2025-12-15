@@ -103,21 +103,6 @@ export const ComboboxOfferToken = ({
     const tokenKey = tokenAddress.toLowerCase();
     
     try {
-      // Check if already cached using functional update to avoid stale closure
-      setAssetsBalances((prev: any) => {
-        if (prev[tokenKey]) {
-          // Already cached, don't fetch
-          return prev;
-        }
-        // Not cached, will fetch below
-        return prev;
-      });
-      
-      // Double-check with current state to avoid duplicate fetches
-      if (assetsBalances[tokenKey]) {
-        return;
-      }
-      
       setAssetsBalancesAreLoading(true);
 
       const contract = getContract<Erc20>(
@@ -140,10 +125,16 @@ export const ComboboxOfferToken = ({
         (await contract.callStatic.balanceOf(account)).toString()
       ).shiftedBy(-decimals.toNumber());
       
-      setAssetsBalances((prev: any) => ({
-        ...prev,
-        [tokenKey]: balance,
-      }));
+      setAssetsBalances((prev: any) => {
+        // Only update if not already cached (avoid overwriting with same value)
+        if (prev[tokenKey]) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [tokenKey]: balance,
+        };
+      });
       
       setAssetsBalancesAreLoading(false);
     } catch (err) {
