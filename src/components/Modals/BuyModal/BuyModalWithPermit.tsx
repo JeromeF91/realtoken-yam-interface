@@ -84,17 +84,18 @@ export const BuyModalWithPermit: FC<
   const { symbol:buyTokenSymbol, address:buyerTokenAddress } = useERC20TokenInfo(offer.buyerTokenAddress);
   
   // Get property token info - when buying, we're buying the buyerToken (property token)
-  // The property token contract address is the Token Smart Contract (0x3785c1ed79548580fd49a000bf9e5884e8d1207b)
-  // NOT the sellerAddress (which is the seller's wallet address 0x7fbbab3a307765f42beb3d7a0b94dcbaa3240370)
-  // Since tokens are reversed, the property token is in buyerTokenAddress (what you're buying)
-  const { propertyToken: buyerPropertyToken } = usePropertyToken(offer.buyerTokenAddress);
+  // Based on the view-offer page display:
+  // - "Seller Address" shows offer.buyerTokenAddress (0x7fbbab3a307765f42beb3d7a0b94dcbaa3240370) - this is the seller's wallet
+  // - "Token Smart Contract" shows offer.sellerAddress (0x3785c1ed79548580fd49a000bf9e5884e8d1207b) - this is the property token contract
+  // So we need to use sellerAddress to get the property token!
+  const { propertyToken: buyerPropertyToken } = usePropertyToken(offer.sellerAddress);
   const { propertiesIsloading } = usePropertiesToken();
   
   console.log('BuyModal: Property token lookup:', {
     offerType: offer.type,
-    buyerTokenAddress: offer.buyerTokenAddress, // This should be the Token Smart Contract (property token)
+    buyerTokenAddress: offer.buyerTokenAddress, // This is actually the seller's wallet address
     offerTokenAddress: offer.offerTokenAddress, // This is what you pay with (USDC)
-    sellerAddress: offer.sellerAddress, // This is the seller's wallet address
+    sellerAddress: offer.sellerAddress, // This is actually the Token Smart Contract (property token)
     foundPropertyToken: !!buyerPropertyToken,
     propertyTokenShortName: buyerPropertyToken?.shortName,
     propertyTokenContractAddress: buyerPropertyToken?.contractAddress,
