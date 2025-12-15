@@ -211,7 +211,7 @@ export const fetchPublicOffersRpc = async (
           const name = info[1];
           const symbol = info[2];
           tokenInfoCache.set(tokenAddress, {
-            tokenType: tokenType.toNumber(),
+            tokenType: typeof tokenType === 'number' ? tokenType : (tokenType as any).toNumber(),
             name,
             symbol,
           });
