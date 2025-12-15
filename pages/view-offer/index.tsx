@@ -653,48 +653,91 @@ const ViewOfferPage = () => {
                         price: offer.price,
                         type: offer.type,
                         buyCurrency: offer.buyCurrency,
+                        propertyTokens: propertyTokens.map(t => ({
+                          address: t.contractAddress,
+                          officialPrice: t.officialPrice,
+                        })),
                       });
 
                       // Try to calculate priceDelta if not available
                       let priceDelta = offer.priceDelta;
                       let officialPrice = offer.officialPrice;
 
-                      // If priceDelta is not available but we have officialPrice and offerPrice, calculate it
-                      if (priceDelta === undefined && officialPrice !== undefined && offer.offerPrice !== undefined) {
+                      // Check if officialPrice is valid (not undefined and > 0)
+                      const hasValidOfficialPrice = officialPrice !== undefined && officialPrice > 0;
+
+                      // Try to get officialPrice from propertyTokens if not valid
+                      if (!hasValidOfficialPrice && propertyTokens.length > 0) {
+                        // For EXCHANGE offers, check both tokens
+                        if (offer.type === OFFER_TYPE.EXCHANGE) {
+                          // Try buyerToken first
+                          const buyerTokenProperty = propertyTokens.find(
+                            t => t.contractAddress?.toLowerCase() === offer.buyerTokenAddress?.toLowerCase()
+                          );
+                          if (buyerTokenProperty?.officialPrice && buyerTokenProperty.officialPrice > 0) {
+                            officialPrice = buyerTokenProperty.officialPrice;
+                          } else {
+                            // Try offerToken
+                            const offerTokenProperty = propertyTokens.find(
+                              t => t.contractAddress?.toLowerCase() === offer.offerTokenAddress?.toLowerCase()
+                            );
+                            if (offerTokenProperty?.officialPrice && offerTokenProperty.officialPrice > 0) {
+                              officialPrice = offerTokenProperty.officialPrice;
+                            }
+                          }
+                        } else {
+                          // For SELL/BUY, check the appropriate token
+                          const propertyToken = propertyTokens.find(
+                            t => t.contractAddress?.toLowerCase() === 
+                              (offer.type === OFFER_TYPE.BUY
+                                ? offer.buyerTokenAddress?.toLowerCase() 
+                                : offer.offerTokenAddress?.toLowerCase())
+                          );
+                          if (propertyToken?.officialPrice && propertyToken.officialPrice > 0) {
+                            officialPrice = propertyToken.officialPrice;
+                          }
+                        }
+                      }
+
+                      // Calculate offerPrice if not available
+                      let offerPrice = offer.offerPrice;
+                      if (offerPrice === undefined && offer.price && prices) {
                         if (offer.type === OFFER_TYPE.SELL) {
-                          // For SELL offers: priceDelta = (offerPrice / officialPrice) - 1
-                          priceDelta = (offer.offerPrice / officialPrice) - 1;
+                          const buyTokenPriceInDollar = parseFloat(prices[offer.buyerTokenAddress?.toLowerCase()] || '0');
+                          if (buyTokenPriceInDollar > 0) {
+                            offerPrice = buyTokenPriceInDollar * parseFloat(offer.price);
+                          }
                         } else if (offer.type === OFFER_TYPE.BUY) {
-                          // For BUY offers: priceDelta = (1/price - officialPrice) / officialPrice
+                          offerPrice = 1 / parseFloat(offer.price);
+                        } else if (offer.type === OFFER_TYPE.EXCHANGE) {
+                          // For EXCHANGE, try to calculate based on which token is the property token
+                          const buyerTokenPrice = parseFloat(prices[offer.buyerTokenAddress?.toLowerCase()] || '0');
+                          const offerTokenPrice = parseFloat(prices[offer.offerTokenAddress?.toLowerCase()] || '0');
+                          
+                          // If buyerToken has a price, calculate offerPrice as buyerTokenPrice * price
+                          if (buyerTokenPrice > 0) {
+                            offerPrice = buyerTokenPrice * parseFloat(offer.price);
+                          } else if (offerTokenPrice > 0) {
+                            // If offerToken has a price, calculate as offerTokenPrice / price
+                            offerPrice = offerTokenPrice / parseFloat(offer.price);
+                          }
+                        }
+                      }
+
+                      // Calculate priceDelta if not available but we have valid officialPrice and offerPrice
+                      if (priceDelta === undefined && officialPrice !== undefined && officialPrice > 0 && offerPrice !== undefined && offerPrice > 0) {
+                        if (offer.type === OFFER_TYPE.SELL || offer.type === OFFER_TYPE.EXCHANGE) {
+                          // For SELL/EXCHANGE: priceDelta = (offerPrice / officialPrice) - 1
+                          priceDelta = (offerPrice / officialPrice) - 1;
+                        } else if (offer.type === OFFER_TYPE.BUY) {
+                          // For BUY: priceDelta = (1/price - officialPrice) / officialPrice
                           const tokenInDollar = 1 / parseFloat(offer.price);
                           priceDelta = (tokenInDollar - officialPrice) / officialPrice;
                         }
                       }
 
-                      // Also try to get officialPrice from propertyTokens if not available
-                      if (officialPrice === undefined && propertyTokens.length > 0) {
-                        const propertyToken = propertyTokens.find(
-                          t => t.contractAddress?.toLowerCase() === 
-                            (offer.type === OFFER_TYPE.BUY
-                              ? offer.buyerTokenAddress?.toLowerCase() 
-                              : offer.offerTokenAddress?.toLowerCase())
-                        );
-                        if (propertyToken?.officialPrice) {
-                          officialPrice = propertyToken.officialPrice;
-                          // Recalculate priceDelta if we now have officialPrice
-                          if (priceDelta === undefined && offer.offerPrice !== undefined && officialPrice !== undefined) {
-                            if (offer.type === OFFER_TYPE.SELL) {
-                              priceDelta = (offer.offerPrice / officialPrice) - 1;
-                            } else if (offer.type === OFFER_TYPE.BUY) {
-                              const tokenInDollar = 1 / parseFloat(offer.price);
-                              priceDelta = (tokenInDollar - officialPrice) / officialPrice;
-                            }
-                          }
-                        }
-                      }
-
-                      // Only show if we have both values
-                      if (officialPrice !== undefined && priceDelta !== undefined) {
+                      // Only show if we have both valid values
+                      if (officialPrice !== undefined && officialPrice > 0 && priceDelta !== undefined) {
                         return (
                           <Flex direction="column" gap={3}>
                             <Text fw={700}>Price Difference</Text>
@@ -702,11 +745,9 @@ const ViewOfferPage = () => {
                               <Text c={priceDelta > 0 ? "red" : priceDelta < 0 ? "green" : "dimmed"}>
                                 {priceDelta > 0 ? "+" : ""}{(priceDelta * 100).toFixed(2)}%
                               </Text>
-                              {officialPrice && (
-                                <Text size="sm" c="dimmed">
-                                  Official price: {officialPrice.toFixed(2)} {offer.buyCurrency || 'USD'}
-                                </Text>
-                              )}
+                              <Text size="sm" c="dimmed">
+                                Official price: {officialPrice.toFixed(2)} {offer.buyCurrency || 'USD'}
+                              </Text>
                             </Flex>
                           </Flex>
                         );
