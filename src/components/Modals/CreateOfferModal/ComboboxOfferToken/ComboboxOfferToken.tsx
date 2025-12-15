@@ -102,12 +102,22 @@ export const ComboboxOfferToken = ({
     
     const tokenKey = tokenAddress.toLowerCase();
     
-    // Don't fetch if already cached
-    if (assetsBalances[tokenKey]) {
-      return;
-    }
-    
     try {
+      // Check if already cached using functional update to avoid stale closure
+      setAssetsBalances((prev: any) => {
+        if (prev[tokenKey]) {
+          // Already cached, don't fetch
+          return prev;
+        }
+        // Not cached, will fetch below
+        return prev;
+      });
+      
+      // Double-check with current state to avoid duplicate fetches
+      if (assetsBalances[tokenKey]) {
+        return;
+      }
+      
       setAssetsBalancesAreLoading(true);
 
       const contract = getContract<Erc20>(
@@ -148,10 +158,14 @@ export const ComboboxOfferToken = ({
   
   // Fetch balance when a token is selected
   useEffect(() => {
-    if (value && type === 'others') {
-      fetchTokenBalance(value);
+    if (value && type === 'others' && provider && account) {
+      const tokenKey = value.toLowerCase();
+      // Only fetch if not already cached
+      if (!assetsBalances[tokenKey]) {
+        fetchTokenBalance(value);
+      }
     }
-  }, [value, type]);
+  }, [value, type, provider, account]);
 
   const [userBalances, userBalancesAreLoading] = useMemo(() => {
     if (type == 'realtoken') {
