@@ -161,6 +161,7 @@ export const fetchPrivateOffersRpc = async (
             const offerTokenAddress = offerData.offerTokenAddress;
             const buyerTokenAddress = offerData.buyerTokenAddress;
             const seller = offerData.seller;
+            const buyer = offerData.buyer;
             const offerId = offerData.offerId;
             const priceBN = new BigNumber(offerData.price);
             const amountBN = new BigNumber(offerData.amount);
