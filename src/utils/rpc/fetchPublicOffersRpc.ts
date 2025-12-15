@@ -328,6 +328,19 @@ export const fetchPublicOffersRpc = async (
           continue;
         }
 
+        // Filter: Only include offers where at least one token is a property token
+        // Check if either offerToken or buyerToken is in the propertiesToken array
+        const hasPropertyToken = propertiesToken.find(
+          propertyToken => 
+            propertyToken.contractAddress.toLowerCase() === offerData.offerTokenAddress.toLowerCase() || 
+            propertyToken.contractAddress.toLowerCase() === offerData.buyerTokenAddress.toLowerCase()
+        );
+
+        if (!hasPropertyToken) {
+          // Skip offers that don't involve property tokens
+          continue;
+        }
+
         const offerTokenDecimals = tokenDecimalsCache.get(offerData.offerTokenAddress) || 18;
         const buyerTokenDecimals = tokenDecimalsCache.get(offerData.buyerTokenAddress) || 18;
 
