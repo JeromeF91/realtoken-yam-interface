@@ -125,49 +125,19 @@ export const fetchOfferRpc = async (
       allValues: offerData,
     });
     
-    // Based on actual return values:
-    // value0: appears to be a token address or other address (NOT seller wallet)
-    // value1: offerToken address
-    // value2: seller wallet address (the actual seller)
-    // value3: buyer address (zero address for public offers)
-    // value4: price
-    // value5: amount
-    // 
-    // So the actual order seems to be: [?, offerToken, seller, buyer, price, amount]
-    // OR: [offerToken, buyerToken, seller, buyer, price, amount]
-    // 
-    // Let's check: if value2 matches a wallet address pattern and value0/value1 are token addresses,
-    // then value2 is likely the seller
-    const value0 = offerData[0];
-    const value1 = offerData[1];
-    const value2 = offerData[2];
-    const value3 = offerData[3];
-    const value4 = offerData[4];
-    const value5 = offerData[5];
+    // Based on actual contract return values from the user's test:
+    // value0: '0x0643FFB30aDD44eF5c74996AD57A03A2244b6F28' - offerToken address
+    // value1: '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83' - buyerToken address  
+    // value2: '0x540A623c7ed0c09E1B3916A83d93f2F59d44eA89' - seller wallet address
+    // value3: '0x0000000000000000000000000000000000000000' - buyer address (zero for public)
+    // value4: price (BigNumber)
+    // value5: amount (BigNumber)
+    //
+    // So the actual order is: [offerToken, buyerToken, seller, buyer, price, amount]
+    // NOT: [seller, offerToken, buyerToken, buyer, price, amount] as the comment suggests
+    const [offerTokenAddress, buyerTokenAddress, seller, buyer, priceBN, amountBN] = offerData;
     
-    // Check if value2 looks like a wallet address (starts with 0x and is 42 chars)
-    // and if value0/value1 look like token addresses
-    const isValue2Wallet = value2 && typeof value2 === 'string' && value2.startsWith('0x') && value2.length === 42;
-    const isValue0Token = value0 && typeof value0 === 'string' && value0.startsWith('0x') && value0.length === 42;
-    const isValue1Token = value1 && typeof value1 === 'string' && value1.startsWith('0x') && value1.length === 42;
-    
-    // If value2 looks like a wallet and value0/value1 look like tokens, use value2 as seller
-    let seller, offerTokenAddress, buyerTokenAddress, buyer, priceBN, amountBN;
-    
-    if (isValue2Wallet && isValue0Token && isValue1Token) {
-      // Order appears to be: [offerToken, buyerToken, seller, buyer, price, amount]
-      console.log('Detected alternative order: [offerToken, buyerToken, seller, buyer, price, amount]');
-      offerTokenAddress = value0;
-      buyerTokenAddress = value1;
-      seller = value2;
-      buyer = value3;
-      priceBN = value4;
-      amountBN = value5;
-    } else {
-      // Use standard order: [seller, offerToken, buyerToken, buyer, price, amount]
-      console.log('Using standard order: [seller, offerToken, buyerToken, buyer, price, amount]');
-      [seller, offerTokenAddress, buyerTokenAddress, buyer, priceBN, amountBN] = offerData;
-    }
+    console.log('Using corrected order: [offerToken, buyerToken, seller, buyer, price, amount]');
     
     // Log the destructured values to verify they're correct
     console.log('Destructured showOffer values:', {
