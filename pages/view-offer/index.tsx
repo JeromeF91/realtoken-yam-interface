@@ -238,8 +238,21 @@ const ViewOfferPage = () => {
   };
 
   const isAccountOffer = useMemo(() => {
-    if (!offer || !account) return false;
-    return offer.sellerAddress.toLowerCase() === account.toLowerCase();
+    if (!offer || !account) {
+      console.log('isAccountOffer check:', { hasOffer: !!offer, hasAccount: !!account });
+      return false;
+    }
+    const sellerLower = offer.sellerAddress?.toLowerCase() || '';
+    const accountLower = account.toLowerCase();
+    const isMatch = sellerLower === accountLower;
+    console.log('isAccountOffer comparison:', {
+      sellerAddress: offer.sellerAddress,
+      sellerLower,
+      account,
+      accountLower,
+      isMatch,
+    });
+    return isMatch;
   }, [offer, account]);
 
   const isConnected = !!account && !!provider && !!effectiveChainId;
