@@ -146,11 +146,44 @@ export const BuyModalWithPermit: FC<
   // Note: offerToken and buyerToken are reversed in naming
   // When buying, you pay with offerToken, so we need to check the balance of offerToken
   // Pass decimals and symbol from offer to avoid RPC calls
-  const { balance, WalletERC20Balance } = useWalletERC20Balance(
+  const { balance, WalletERC20Balance, bigNumberbalance } = useWalletERC20Balance(
     offer.offerTokenAddress,
     offer.offerTokenDecimals,
     offerTokenSymbol
   )
+
+  // Get current allowance for the payment token (offerToken) to calculate max quantity
+  const [allowanceBN, setAllowanceBN] = useState<BigNumber | undefined>(undefined);
+  useEffect(() => {
+    const fetchAllowance = async () => {
+      if (!account || !provider || !offer.offerTokenAddress || !realTokenYamUpgradeable) {
+        return;
+      }
+      
+      try {
+        const Erc20Contract = getContract<Erc20>(
+          offer.offerTokenAddress,
+          Erc20ABI,
+          provider as Web3Provider,
+          account
+        );
+        
+        if (Erc20Contract) {
+          const allowance = await Erc20Contract.callStatic.allowance(
+            account,
+            realTokenYamUpgradeable.address
+          );
+          setAllowanceBN(new BigNumber(allowance.toString()));
+        }
+      } catch (error: any) {
+        console.warn('Failed to fetch allowance for max calculation:', error?.message);
+        // If allowance call fails, set to 0 (user will need to approve)
+        setAllowanceBN(new BigNumber(0));
+      }
+    };
+    
+    fetchAllowance();
+  }, [account, provider, offer.offerTokenAddress, realTokenYamUpgradeable]);
 
   const total = values?.amount * values?.price;
 
@@ -183,11 +216,40 @@ export const BuyModalWithPermit: FC<
   const maxTokenBuy: number|undefined = useMemo(() => {
     if(!balance || !offer.price) return undefined;
 
-    const b = new BigNumber(balance);
-    const max = b.eq(0) ? new BigNumber(0) : b.dividedBy(offer.price);
-
-    return max.isGreaterThanOrEqualTo(new BigNumber(offer.amount)) ? new BigNumber(offer.amount).toNumber() : parseFloat(max.toString());
-  },[balance,offer]);
+    const offerAmountBN = new BigNumber(offer.amount);
+    const priceBN = new BigNumber(offer.price);
+    
+    // Get balance in wei (bigNumberbalance is already in wei, balance is in human-readable format)
+    let balanceInWei: BigNumber;
+    if (bigNumberbalance) {
+      balanceInWei = bigNumberbalance;
+    } else {
+      // Convert human-readable balance to wei
+      const balanceBN = new BigNumber(balance);
+      balanceInWei = balanceBN.shiftedBy(Number(offer.offerTokenDecimals || 18));
+    }
+    
+    // Calculate max based on balance: balance / price
+    const maxFromBalance = balanceInWei.eq(0) ? new BigNumber(0) : balanceInWei.dividedBy(priceBN);
+    
+    // Calculate max based on allowance: allowance / price
+    let maxFromAllowance = new BigNumber(Infinity);
+    if (allowanceBN !== undefined) {
+      maxFromAllowance = allowanceBN.eq(0) ? new BigNumber(0) : allowanceBN.dividedBy(priceBN);
+    }
+    
+    // For buy offers, max quantity = min(offer.amount, balance/price, allowance/price)
+    const max = BigNumber.minimum(
+      offerAmountBN,
+      maxFromBalance,
+      maxFromAllowance
+    );
+    
+    // Convert back to human-readable format (divide by buyerTokenDecimals)
+    const maxHumanReadable = max.shiftedBy(-Number(offer.buyerTokenDecimals || 18));
+    
+    return maxHumanReadable.toNumber();
+  },[balance, bigNumberbalance, allowanceBN, offer]);
 
   const { approveNeeded, approve, approveLoading } = useApproveOffer(offer, values.amount);
 
