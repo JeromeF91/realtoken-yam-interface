@@ -388,10 +388,10 @@ export const fetchPublicOffersRpc = async (
         
         if (offerTokenInfo.tokenType === 1 && accountUserRealtoken) {
           balance = accountUserRealtoken.amount;
-          allowance = accountUserRealtoken.allowance;
+          allowance = accountUserRealtoken.allowance ?? '0';
         } else if (accountUserRealtoken) {
           balance = accountUserRealtoken.amount;
-          allowance = accountUserRealtoken.allowance;
+          allowance = accountUserRealtoken.allowance ?? '0';
         }
 
         const availableAmount = BigNumber.minimum(
