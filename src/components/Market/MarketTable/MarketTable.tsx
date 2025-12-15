@@ -95,8 +95,13 @@ export const MarketTable: FC = () => {
   const { offers: data } = useTypedOffers(offers, offersAreLoading);
   const columns = useRightTableColumn(OFFERS_TYPE.PUBLIC);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('MarketTable - offers:', offers?.length, 'data:', data?.length, 'loading:', offersAreLoading);
+  }, [offers, data, offersAreLoading]);
+
   const table = useReactTable({
-    data: data,
+    data: data || [],
     columns: columns,
     state: {
       sorting: sorting,
