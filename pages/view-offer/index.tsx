@@ -848,7 +848,8 @@ const ViewOfferPage = () => {
                     ) : null}
                     
                     {/* Whitelisting check disabled temporarily - TheGraph subgraph not returning whitelist data */}
-                    {false && (() => {
+                    {/* 
+                    {(() => {
                       // Check whitelisting status
                       if (!account || !offer || !wlProperties) return null;
                       
@@ -920,6 +921,7 @@ const ViewOfferPage = () => {
                       console.log('No whitelisting alert - all tokens are whitelisted or no tokens found');
                       return null;
                     })()}
+                    */}
                     
                     <BuyActionsWithPermit
                       buyOffer={offer}
