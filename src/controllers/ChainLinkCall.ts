@@ -7,6 +7,7 @@ import { Price as P, Price } from "src/types/price";
 import { getContract } from "../utils";
 import { GetPriceTokenChainLink } from "../types/GetPriceTokens";
 import { CHAINS, ChainsID } from "../constants";
+import { getRpcProvider } from "../utils/rpc/rpcHelpers";
 
 export const getChainlinkPrice = (allowedToken: GetPriceTokenChainLink, rpcUrl: string, chainId: number | string) => {
     return new Promise<Price>(async (resolve,reject) => {
@@ -14,18 +15,14 @@ export const getChainlinkPrice = (allowedToken: GetPriceTokenChainLink, rpcUrl: 
         // Ensure chainId is a number
         const chainIdNum = typeof chainId === 'string' ? parseInt(chainId, 10) : chainId;
         
-        // Create network object with explicit chainId to avoid auto-detection issues
-        const chain = CHAINS[chainIdNum as ChainsID];
-        const network: Network = chain ? {
-          chainId: chainIdNum,
-          name: chain.chainName,
-        } : {
-          chainId: chainIdNum,
-          name: `Chain ${chainIdNum}`,
-        };
-
-        // Pass network explicitly to avoid "could not detect network" errors
-        const provider = new JsonRpcProvider(rpcUrl, network);
+        if (isNaN(chainIdNum)) {
+          reject(new Error(`Invalid chainId: ${chainId}`));
+          return;
+        }
+        
+        // Use the cached getRpcProvider function which already handles network configuration correctly
+        // This avoids "could not detect network" errors
+        const provider = getRpcProvider(chainIdNum);
 
         const tokenAddress = allowedToken.contractAddress;
         const oracleContractAddress = allowedToken.priceFnc.contractAddress;
