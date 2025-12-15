@@ -1,7 +1,11 @@
-import { useMemo } from "react";
-import { useOffers } from "../interface/useOffers";
-import { Offer } from "../../types/offer";
+import { useQuery } from "react-query";
 import { useWeb3React } from "@web3-react/core";
+import { Offer, OFFER_LOADING } from "../../types/offer";
+import { REACT_QUERY_ERRORS } from "../../types/ReactQueryErrors";
+import { fetchPrivateOffersRpc } from "../../utils/rpc/fetchPrivateOffersRpc";
+import { usePrices } from "../interface/usePrices";
+import { useProperties } from "../interface/useProperties";
+import { useWlProperties } from "../interface/useWlProperties";
 
 type UsePrivateOffers = () => {
     offers: Offer[];
@@ -9,14 +13,48 @@ type UsePrivateOffers = () => {
     refetch: () => void;
 }
 export const usePrivateOffers: UsePrivateOffers = () => {
+    const { chainId, account } = useWeb3React();
+    const { properties, propertiesAreLoading } = useProperties();
+    const { prices, pricesAreLoading } = usePrices();
+    const { wlProperties, wlPropertiesAreLoading } = useWlProperties();
 
-    const { account } = useWeb3React();
-    const { offers, offersAreLoading, refetch } = useOffers();
+    const {
+        isLoading: loading,
+        data: offers,
+        isSuccess,
+        refetch,
+    } = useQuery({
+        queryKey: ['privateOffers', chainId, account],
+        meta: { errCode: REACT_QUERY_ERRORS.FETCH_OFFERS },
+        enabled: !!chainId && !!account && !!properties && !!prices && !!wlProperties,
+        queryFn: async (): Promise<Offer[]> => {
+            if (!chainId || !account || !properties || !prices || !wlProperties)
+                return OFFER_LOADING;
 
-    const privateOffers = useMemo(() => {
-        if(!account || !offers) return [];
-        return offers.filter((offer: Offer) => offer.buyerAddress && offer.buyerAddress.toLowerCase() == account.toLowerCase());
-    }, [offers, account]);
+            try {
+                // Use RPC to fetch only private offers where user is the buyer
+                const privateOffers = await fetchPrivateOffersRpc(
+                    account,
+                    chainId,
+                    properties,
+                    wlProperties,
+                    prices
+                );
 
-    return { offers: privateOffers, offersAreLoading, refetch };
+                return privateOffers;
+            } catch (error: any) {
+                console.error('Error fetching private offers:', error);
+                // Return empty array instead of OFFER_LOADING to allow page to render
+                return [];
+            }
+        },
+    });
+
+    const offersAreLoading = loading || propertiesAreLoading || pricesAreLoading || wlPropertiesAreLoading;
+
+    return { 
+        offers: isSuccess ? offers : [], 
+        offersAreLoading, 
+        refetch 
+    };
 }
