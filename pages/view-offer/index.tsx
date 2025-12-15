@@ -849,13 +849,41 @@ const ViewOfferPage = () => {
                     
                     {(() => {
                       // Check whitelisting status
-                      if (!account || !offer || !wlProperties || !propertiesToken) return null;
+                      if (!account || !offer || !wlProperties) return null;
+                      
+                      // Use propertiesToken from hook, which should have tokenIdRules
+                      // If not available, try propertyTokens from state (but they might not have tokenIdRules)
+                      const propertiesToCheck = propertiesToken && propertiesToken.length > 0 
+                        ? propertiesToken 
+                        : propertyTokens;
+                      
+                      if (!propertiesToCheck || propertiesToCheck.length === 0) return null;
+                      
+                      console.log('Whitelisting check:', {
+                        account,
+                        wlProperties,
+                        offerType: offer.type,
+                        buyerTokenAddress: offer.buyerTokenAddress,
+                        offerTokenAddress: offer.offerTokenAddress,
+                        propertiesToCheckCount: propertiesToCheck.length,
+                        propertiesTokenCount: propertiesToken?.length,
+                        propertyTokensCount: propertyTokens.length,
+                      });
                       
                       const tokenNotWhitelisted = getNotWhitelistedTokens(
                         wlProperties,
                         offer,
-                        propertiesToken
+                        propertiesToCheck
                       );
+                      
+                      console.log('Whitelisting result:', {
+                        tokenNotWhitelistedCount: tokenNotWhitelisted.length,
+                        tokenNotWhitelisted: tokenNotWhitelisted.map(t => ({
+                          shortName: t.shortName,
+                          contractAddress: t.contractAddress,
+                          tokenIdRules: t.tokenIdRules,
+                        })),
+                      });
                       
                       if (tokenNotWhitelisted.length > 0) {
                         return (
