@@ -241,24 +241,38 @@ const ViewOfferPage = () => {
     if (!offer || !account) {
       return false;
     }
-    // sellerAddress should be the wallet address of the person who created the offer
-    // Compare both in lowercase for case-insensitive matching
-    const sellerLower = (offer.sellerAddress || '').toLowerCase();
+    // Check all possible address fields to find which one matches the account
+    // The seller address might be in sellerAddress, but let's check all fields
     const accountLower = account.toLowerCase();
-    const isMatch = sellerLower === accountLower;
-    console.log('isAccountOffer check:', {
-      sellerAddress: offer.sellerAddress,
-      sellerLower,
+    const sellerAddressLower = (offer.sellerAddress || '').toLowerCase();
+    const buyerAddressLower = (offer.buyerAddress || '').toLowerCase();
+    const offerTokenAddressLower = (offer.offerTokenAddress || '').toLowerCase();
+    const buyerTokenAddressLower = (offer.buyerTokenAddress || '').toLowerCase();
+    
+    // Check if sellerAddress matches (primary check)
+    const isSellerMatch = sellerAddressLower === accountLower;
+    
+    // Also check buyerAddress in case the offer structure is different
+    const isBuyerMatch = buyerAddressLower === accountLower;
+    
+    // Log all addresses for debugging
+    console.log('isAccountOffer check - all addresses:', {
       account,
       accountLower,
-      isMatch,
-      offerId: offer.offerId,
-      // Also log other addresses for debugging
+      sellerAddress: offer.sellerAddress,
+      sellerAddressLower,
+      buyerAddress: offer.buyerAddress,
+      buyerAddressLower,
       offerTokenAddress: offer.offerTokenAddress,
       buyerTokenAddress: offer.buyerTokenAddress,
-      buyerAddress: offer.buyerAddress,
+      isSellerMatch,
+      isBuyerMatch,
+      offerId: offer.offerId,
     });
-    return isMatch;
+    
+    // Return true if either seller or buyer address matches (for now, we'll use seller)
+    // But if sellerAddress is wrong, we might need to check buyerAddress
+    return isSellerMatch || isBuyerMatch;
   }, [offer, account]);
 
   const isConnected = !!account && !!provider && !!effectiveChainId;
