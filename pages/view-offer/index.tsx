@@ -645,59 +645,42 @@ const ViewOfferPage = () => {
                     </Flex>
 
                     {(() => {
+                      // Get officialPrice from propertyTokens (same source as PropertyCard uses)
+                      // For EXCHANGE offers, check both tokens; for SELL/BUY, check the appropriate token
+                      let propertyToken: PropertiesToken | undefined;
+                      if (offer.type === OFFER_TYPE.EXCHANGE) {
+                        // Try buyerToken first, then offerToken
+                        propertyToken = propertyTokens.find(
+                          t => t.contractAddress?.toLowerCase() === offer.buyerTokenAddress?.toLowerCase()
+                        ) || propertyTokens.find(
+                          t => t.contractAddress?.toLowerCase() === offer.offerTokenAddress?.toLowerCase()
+                        );
+                      } else {
+                        // For SELL/BUY, check the appropriate token
+                        propertyToken = propertyTokens.find(
+                          t => t.contractAddress?.toLowerCase() === 
+                            (offer.type === OFFER_TYPE.BUY
+                              ? offer.buyerTokenAddress?.toLowerCase() 
+                              : offer.offerTokenAddress?.toLowerCase())
+                        );
+                      }
+
+                      // Use officialPrice from propertyToken (same as PropertyCard)
+                      const officialPrice = propertyToken?.officialPrice;
+                      
                       // Debug: log priceDelta and officialPrice
                       console.log('Price difference debug:', {
                         priceDelta: offer.priceDelta,
-                        officialPrice: offer.officialPrice,
+                        officialPrice: officialPrice,
                         offerPrice: offer.offerPrice,
                         price: offer.price,
                         type: offer.type,
                         buyCurrency: offer.buyCurrency,
-                        propertyTokens: propertyTokens.map(t => ({
-                          address: t.contractAddress,
-                          officialPrice: t.officialPrice,
-                        })),
+                        propertyTokenAddress: propertyToken?.contractAddress,
                       });
 
                       // Try to calculate priceDelta if not available
                       let priceDelta = offer.priceDelta;
-                      let officialPrice = offer.officialPrice;
-
-                      // Check if officialPrice is valid (not undefined and > 0)
-                      const hasValidOfficialPrice = officialPrice !== undefined && officialPrice > 0;
-
-                      // Try to get officialPrice from propertyTokens if not valid
-                      if (!hasValidOfficialPrice && propertyTokens.length > 0) {
-                        // For EXCHANGE offers, check both tokens
-                        if (offer.type === OFFER_TYPE.EXCHANGE) {
-                          // Try buyerToken first
-                          const buyerTokenProperty = propertyTokens.find(
-                            t => t.contractAddress?.toLowerCase() === offer.buyerTokenAddress?.toLowerCase()
-                          );
-                          if (buyerTokenProperty?.officialPrice && buyerTokenProperty.officialPrice > 0) {
-                            officialPrice = buyerTokenProperty.officialPrice;
-                          } else {
-                            // Try offerToken
-                            const offerTokenProperty = propertyTokens.find(
-                              t => t.contractAddress?.toLowerCase() === offer.offerTokenAddress?.toLowerCase()
-                            );
-                            if (offerTokenProperty?.officialPrice && offerTokenProperty.officialPrice > 0) {
-                              officialPrice = offerTokenProperty.officialPrice;
-                            }
-                          }
-                        } else {
-                          // For SELL/BUY, check the appropriate token
-                          const propertyToken = propertyTokens.find(
-                            t => t.contractAddress?.toLowerCase() === 
-                              (offer.type === OFFER_TYPE.BUY
-                                ? offer.buyerTokenAddress?.toLowerCase() 
-                                : offer.offerTokenAddress?.toLowerCase())
-                          );
-                          if (propertyToken?.officialPrice && propertyToken.officialPrice > 0) {
-                            officialPrice = propertyToken.officialPrice;
-                          }
-                        }
-                      }
 
                       // Calculate offerPrice if not available
                       let offerPrice = offer.offerPrice;
