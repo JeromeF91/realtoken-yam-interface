@@ -45,65 +45,32 @@ export const fetchPrivateOffersRpc = async (
     const userAddressLower = account.toLowerCase();
     const contractInterface = new utils.Interface(realTokenYamUpgradeableABI);
     
-    console.log(`Querying OfferCreated events for buyer: ${userAddressLower}`);
+    console.log(`Fetching private offers for buyer: ${userAddressLower}`);
     
-    // Query events from block 0 to latest (or use a reasonable range)
-    const currentBlock = await provider.getBlockNumber();
-    const fromBlock = Math.max(0, currentBlock - 100000); // Last ~100k blocks should be enough
-    const toBlock = currentBlock;
+    // Since buyer is NOT indexed in OfferCreated event, we can't filter by it efficiently
+    // Instead, we'll get the total offer count and check each offer's buyer in batches
+    // This is more RPC-efficient than querying all events
+    const offerCountBN = await yamContract.callStatic.getOfferCount();
+    const totalOffers = offerCountBN.toNumber();
     
-    // IMPORTANT: buyer is NOT indexed in OfferCreated event, so we can't filter by it in the event filter
-    // Event signature: OfferCreated(address indexed offerToken, address indexed buyerToken, address seller, address buyer, uint256 indexed offerId, uint256 price, uint256 amount)
-    // Only offerToken, buyerToken, and offerId are indexed - seller and buyer are NOT indexed
-    // So we need to query all events and filter by buyer address in JavaScript
-    const offerCreatedFilter = yamContract.filters.OfferCreated();
-    const allEvents = await yamContract.queryFilter(offerCreatedFilter, fromBlock, toBlock);
+    console.log(`Total offers on chain: ${totalOffers}`);
     
-    console.log(`Found ${allEvents.length} total OfferCreated events, filtering for buyer ${userAddressLower}`);
-    
-    // Filter events by buyer address (buyer is the 4th parameter, index 3 in the args array)
-    // Event args: [offerToken, buyerToken, seller, buyer, offerId, price, amount]
-    const filteredEvents = allEvents.filter(event => {
-      if (!event.args || event.args.length < 4) {
-        return false;
-      }
-      // buyer is at index 3 in the args array
-      const buyer = event.args[3];
-      return buyer && buyer.toLowerCase() === userAddressLower;
-    });
-    
-    console.log(`Found ${filteredEvents.length} OfferCreated events for buyer ${account}`);
-    
-    if (filteredEvents.length === 0) {
+    if (totalOffers === 0) {
       return [];
     }
 
-    // Extract offer IDs from filtered events
-    const privateOfferIds: number[] = [];
-    filteredEvents.forEach(event => {
-      if (event.args && event.args.offerId !== undefined) {
-        const offerId = event.args.offerId.toNumber();
-        privateOfferIds.push(offerId);
-      }
-    });
-
-    console.log(`Found ${privateOfferIds.length} private offer IDs for user ${account}`);
-
-    if (privateOfferIds.length === 0) {
-      return [];
+    // Limit to checking the most recent offers to prevent excessive RPC calls
+    // Start from the most recent offers and work backwards
+    const MAX_OFFERS_TO_CHECK = 100;
+    const startOfferId = Math.max(0, totalOffers - MAX_OFFERS_TO_CHECK);
+    const offerIdsToCheck: number[] = [];
+    for (let i = totalOffers - 1; i >= startOfferId; i--) {
+      offerIdsToCheck.push(i);
     }
-
-    // Limit the number of offers to fetch to prevent excessive RPC calls
-    const MAX_OFFERS_TO_FETCH = 100;
-    const offersToFetch = privateOfferIds.length > MAX_OFFERS_TO_FETCH 
-      ? privateOfferIds.slice(-MAX_OFFERS_TO_FETCH) // Get most recent offers
-      : privateOfferIds;
     
-    if (privateOfferIds.length > MAX_OFFERS_TO_FETCH) {
-      console.warn(`User has ${privateOfferIds.length} private offers, limiting to ${MAX_OFFERS_TO_FETCH} most recent offers to prevent excessive RPC calls`);
-    }
+    console.log(`Checking ${offerIdsToCheck.length} most recent offers for buyer ${userAddressLower}`);
 
-    // Step 2: Fetch only the private offers using multicall
+    // Step 2: Fetch offers using multicall in batches and filter by buyer
     const offerDataArray: Array<{
       offerId: number;
       seller: string;
@@ -115,11 +82,11 @@ export const fetchPrivateOffersRpc = async (
     }> = [];
 
     // Fetch offers using multicall in batches
-    const multicallBatchSize = 100;
+    const multicallBatchSize = 50; // Smaller batches to avoid RPC limits
     const offerResults: Array<{ offerId: number; success: boolean; data: any }> = [];
     
-    for (let i = 0; i < offersToFetch.length; i += multicallBatchSize) {
-      const batchIds = offersToFetch.slice(i, i + multicallBatchSize);
+    for (let i = 0; i < offerIdsToCheck.length; i += multicallBatchSize) {
+      const batchIds = offerIdsToCheck.slice(i, i + multicallBatchSize);
       
       try {
         const batchResults = await batchShowOffers(
@@ -137,7 +104,7 @@ export const fetchPrivateOffersRpc = async (
           });
         });
       } catch (error: any) {
-        console.error(`Error fetching private offers batch ${i}-${i + batchIds.length}:`, error);
+        console.error(`Error fetching offers batch ${i}-${i + batchIds.length}:`, error);
         batchIds.forEach(offerId => {
           offerResults.push({
             offerId,
@@ -147,12 +114,12 @@ export const fetchPrivateOffersRpc = async (
         });
       }
       
-      if (i + multicallBatchSize < offersToFetch.length) {
+      if (i + multicallBatchSize < offerIdsToCheck.length) {
         await delay(50);
       }
     }
     
-    // Extract data from successful results and verify buyer matches
+    // Extract data from successful results and filter by buyer address
     offerResults.forEach(({ offerId, success, data }) => {
       if (!success || !data) {
         return; // Skip failed calls
@@ -161,8 +128,8 @@ export const fetchPrivateOffersRpc = async (
       try {
         const [seller, offerTokenAddress, buyerTokenAddress, buyer, priceBN, amountBN] = data;
         
-        // Double-check that buyer matches (should already be filtered by event query)
-        if (buyer.toLowerCase() === userAddressLower) {
+        // Filter by buyer address - only include offers where buyer matches
+        if (buyer && buyer.toLowerCase() === userAddressLower && buyer.toLowerCase() !== '0x0000000000000000000000000000000000000000') {
           offerDataArray.push({
             offerId,
             seller: seller.toLowerCase(),
@@ -174,7 +141,7 @@ export const fetchPrivateOffersRpc = async (
           });
         }
       } catch (error) {
-        console.warn(`Error processing private offer ${offerId}:`, error);
+        console.warn(`Error processing offer ${offerId}:`, error);
       }
     });
 
