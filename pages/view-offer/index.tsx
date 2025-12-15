@@ -241,14 +241,22 @@ const ViewOfferPage = () => {
     if (!offer || !account) {
       return false;
     }
-    // Match the pattern used in BuyActionsWithPermit
-    // sellerAddress might already be lowercase, so compare with account.toLowerCase()
-    const isMatch = offer.sellerAddress?.toLowerCase() === account.toLowerCase();
+    // sellerAddress should be the wallet address of the person who created the offer
+    // Compare both in lowercase for case-insensitive matching
+    const sellerLower = (offer.sellerAddress || '').toLowerCase();
+    const accountLower = account.toLowerCase();
+    const isMatch = sellerLower === accountLower;
     console.log('isAccountOffer check:', {
       sellerAddress: offer.sellerAddress,
+      sellerLower,
       account,
+      accountLower,
       isMatch,
       offerId: offer.offerId,
+      // Also log other addresses for debugging
+      offerTokenAddress: offer.offerTokenAddress,
+      buyerTokenAddress: offer.buyerTokenAddress,
+      buyerAddress: offer.buyerAddress,
     });
     return isMatch;
   }, [offer, account]);
