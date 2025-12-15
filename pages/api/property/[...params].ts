@@ -1,7 +1,7 @@
 import { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
 import { APIPropertiesToken, PropertiesToken } from 'src/types/PropertiesToken';
-import { ChainsID } from '../../../../src/constants';
+import { ChainsID } from '../../../src/constants';
 
 /**
  * In-memory cache for property data
@@ -68,6 +68,7 @@ const getContractAddressKey = (chainId: number): keyof APIPropertiesToken['block
 /**
  * Server-side API route to fetch property by address or UUID
  * GET /api/property/[chainId]/[address]
+ * Uses catch-all route to handle nested dynamic segments
  */
 const handler: NextApiHandler = async (
   req: NextApiRequest,
@@ -78,18 +79,23 @@ const handler: NextApiHandler = async (
   }
 
   try {
-    const { chainId: chainIdParam, address } = req.query;
+    // Extract chainId and address from params array
+    // URL: /api/property/100/0x0910bdbe7abb67c409f9ddd87c14667b1b715e8b
+    // params will be: ['100', '0x0910bdbe7abb67c409f9ddd87c14667b1b715e8b']
+    const params = req.query.params as string[];
     
-    if (!chainIdParam || !address) {
-      return res.status(400).json({ error: 'ChainId and address are required' });
+    if (!params || params.length < 2) {
+      return res.status(400).json({ error: 'ChainId and address are required. Expected format: /api/property/[chainId]/[address]' });
     }
 
-    const chainId = parseInt(chainIdParam as string, 10);
+    const chainIdParam = params[0];
+    const addressOrUuid = params.slice(1).join('/'); // Join remaining params in case address has slashes
+
+    const chainId = parseInt(chainIdParam, 10);
     if (isNaN(chainId)) {
       return res.status(400).json({ error: 'Invalid chainId' });
     }
 
-    const addressOrUuid = address as string;
     const addressLower = addressOrUuid.toLowerCase();
     const cacheKey = `${chainId}:${addressLower}`;
     
