@@ -1,7 +1,11 @@
-import { useMemo } from "react";
-import { useOffers } from "../interface/useOffers";
-import { Offer } from "../../types/offer";
-import BigNumber from "bignumber.js";
+import { useQuery } from "react-query";
+import { useWeb3React } from "@web3-react/core";
+import { Offer, OFFER_LOADING } from "../../types/offer";
+import { REACT_QUERY_ERRORS } from "../../types/ReactQueryErrors";
+import { fetchPublicOffersRpc } from "../../utils/rpc/fetchPublicOffersRpc";
+import { usePrices } from "../interface/usePrices";
+import { useProperties } from "../interface/useProperties";
+import { useWlProperties } from "../interface/useWlProperties";
 
 type UsePublicOffers = () => {
     offers: Offer[];
@@ -9,18 +13,47 @@ type UsePublicOffers = () => {
     refetch: () => void;
 }
 export const usePublicOffers: UsePublicOffers = () => {
-    const { offers, offersAreLoading, refetch } = useOffers();
+    const { chainId, account } = useWeb3React();
+    const { properties, propertiesAreLoading } = useProperties();
+    const { prices, pricesAreLoading } = usePrices();
+    const { wlProperties, wlPropertiesAreLoading } = useWlProperties();
 
-    const publicOffers = useMemo(() => {
-        return offers.filter((offer: Offer) => 
-            !offer.buyerAddress &&
-            BigNumber(offer.amount).isPositive() &&
-            !BigNumber(offer.amount).isZero());
-    }, [offers]);
+    const {
+        isLoading: loading,
+        data: offers,
+        isSuccess,
+        refetch,
+    } = useQuery({
+        queryKey: ['publicOffers', chainId, account],
+        meta: { errCode: REACT_QUERY_ERRORS.FETCH_OFFERS },
+        enabled: !!chainId && !!account && !!properties && !!prices && !!wlProperties,
+        queryFn: async (): Promise<Offer[]> => {
+            if (!chainId || !account || !properties || !prices || !wlProperties)
+                return OFFER_LOADING;
 
-    return useMemo(() => ({ 
-        offers: publicOffers, 
+            try {
+                // Use RPC to fetch only the last 10 public offers
+                const publicOffers = await fetchPublicOffersRpc(
+                    account,
+                    chainId,
+                    properties,
+                    wlProperties,
+                    prices
+                );
+
+                return publicOffers;
+            } catch (error: any) {
+                console.error('Error fetching public offers:', error);
+                return [];
+            }
+        },
+    });
+
+    const offersAreLoading = loading || propertiesAreLoading || pricesAreLoading || wlPropertiesAreLoading;
+
+    return { 
+        offers: isSuccess ? offers : [], 
         offersAreLoading, 
         refetch 
-    }), [publicOffers, offersAreLoading, refetch]);
+    };
 }
