@@ -27,11 +27,8 @@ export type DataWithBalance = ComboboxItem & {
   selected: boolean;
 };
 
-const ComboboxOfferTokenOption = ({ item }: { item: DataWithBalance }) => {
+const ComboboxOfferTokenOption = ({ item, isLoading }: { item: DataWithBalance; isLoading: boolean }) => {
   const { value, balance, label, selected } = item;
-
-  // Don't fetch balances here - they're passed from parent
-  const userBalancesAreLoading = false;
 
   // Only show balance if this is the selected token (for 'others' type, balances are only fetched for selected token)
   const showBalance = selected && balance && !balance.isZero();
@@ -46,15 +43,15 @@ const ComboboxOfferTokenOption = ({ item }: { item: DataWithBalance }) => {
               {label}
             </Text>
           </Flex>
-          {showBalance && !userBalancesAreLoading ? (
+          {showBalance && !isLoading ? (
             <Text size='sm' c={'gray'}>
               {balance.toString(10)}
             </Text>
-          ) : selected && userBalancesAreLoading ? (
+          ) : selected && isLoading ? (
             <Skeleton width={200} height={15} />
           ) : undefined}
         </Flex>
-        {selected && userBalancesAreLoading ? <Loader size={18} /> : undefined}
+        {selected && isLoading ? <Loader size={18} /> : undefined}
       </Flex>
     </Combobox.Option>
   );
@@ -221,7 +218,11 @@ export const ComboboxOfferToken = ({
     : sortedDatas;
 
   const options = filteredOptions.map((item) => (
-    <ComboboxOfferTokenOption item={item} key={item.value} />
+    <ComboboxOfferTokenOption 
+      item={item} 
+      key={item.value} 
+      isLoading={userBalancesAreLoading}
+    />
   ));
 
   const selectedOption = sortedDatas.find((item) => item.value === value);
