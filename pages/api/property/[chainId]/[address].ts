@@ -102,9 +102,10 @@ const handler: NextApiHandler = async (
         .json(cached);
     }
 
-    const apiKey = process.env.COMMUNITY_API_KEY ?? '';
+    const apiKey = process.env.COMMUNITY_API_KEY ?? process.env.NEXT_PUBLIC_COMMUNITY_API_KEY ?? '';
     if (!apiKey) {
       console.warn('COMMUNITY_API_KEY is not set. API requests may fail.');
+      return res.status(500).json({ error: 'API key not configured' });
     }
 
     // First, try to fetch directly using the UUID/address as the endpoint
