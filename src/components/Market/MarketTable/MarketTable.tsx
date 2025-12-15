@@ -153,22 +153,29 @@ export const MarketTable: FC = () => {
   });
 
   return (
-    <Table
-      tableProps={{
-        highlightOnHover: true,
-        verticalSpacing: 'sm',
-        horizontalSpacing: 'xs',
-        style: () => ({
-          overflow: 'hidden',
-        }),
-      }}
-      table={table}
-      tablecaptionOptions={{
-        refreshState: [offersAreLoading, () => refetchPublicOffers()],
-        visible: true,
-      }}
-      TableSubRow={MarketSubRow}
-      isLoading={offersAreLoading}
-    />
+    <>
+      {data && data.length === 0 && !offersAreLoading && offers && offers.length > 0 && (
+        <div style={{ padding: '1rem', textAlign: 'center', color: '#999' }}>
+          No offers of the selected type. Try switching between SELL, BUY, and EXCHANGE using the buttons above.
+        </div>
+      )}
+      <Table
+        tableProps={{
+          highlightOnHover: true,
+          verticalSpacing: 'sm',
+          horizontalSpacing: 'xs',
+          style: () => ({
+            overflow: 'hidden',
+          }),
+        }}
+        table={table}
+        tablecaptionOptions={{
+          refreshState: [offersAreLoading, () => refetchPublicOffers()],
+          visible: true,
+        }}
+        TableSubRow={MarketSubRow}
+        isLoading={offersAreLoading}
+      />
+    </>
   );
 };
