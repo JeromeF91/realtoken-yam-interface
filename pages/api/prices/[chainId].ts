@@ -20,6 +20,52 @@ const rpcUrls = new Map<number, string>([
   [ChainsID.Sepolia, sepoliaRpcUrl],
 ]);
 
+/**
+ * In-memory cache for prices
+ * Key: chainId
+ * Value: { data: Record<string, number>, timestamp: number }
+ */
+interface PricesCacheEntry {
+  data: Record<string, number>;
+  timestamp: number;
+}
+
+const pricesCache = new Map<number, PricesCacheEntry>();
+
+/**
+ * Cache TTL: 60 seconds (matches HTTP cache)
+ */
+const CACHE_TTL = 60 * 1000;
+
+/**
+ * Get cached prices if available and not expired
+ */
+const getCachedPrices = (chainId: number): Record<string, number> | null => {
+  const entry = pricesCache.get(chainId);
+  if (!entry) {
+    return null;
+  }
+  
+  const now = Date.now();
+  if (now - entry.timestamp > CACHE_TTL) {
+    // Cache expired, remove it
+    pricesCache.delete(chainId);
+    return null;
+  }
+  
+  return entry.data;
+};
+
+/**
+ * Set cached prices with timestamp
+ */
+const setCachedPrices = (chainId: number, data: Record<string, number>): void => {
+  pricesCache.set(chainId, {
+    data,
+    timestamp: Date.now(),
+  });
+};
+
 const handler: NextApiHandler = async (
   req: NextApiRequest,
   res: NextApiResponse
@@ -28,6 +74,15 @@ const handler: NextApiHandler = async (
     const { chainId: id } = req.query;
     const chainId: number = id as unknown as number;
     if (!chainId) return res.status(400).json({ error: 'ChainId is missing.' });
+
+    // Check cache first
+    const cached = getCachedPrices(chainId);
+    if (cached) {
+      return res
+        .setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate')
+        .status(200)
+        .json(cached);
+    }
 
     const tokens = tokenToGetPrice.get(Number(chainId));
     if (!tokens) return res.status(400).json({ error: 'ChainId is invalid.' });
@@ -71,6 +126,9 @@ const handler: NextApiHandler = async (
       acc[price.contractAddress.toLowerCase()] = Number(price.price);
       return acc;
     }, {});
+
+    // Cache the result
+    setCachedPrices(chainId, pricesParsed);
 
     return res
       .setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate')
