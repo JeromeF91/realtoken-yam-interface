@@ -197,7 +197,7 @@ export const fetchUserOffersRpc = async (
           const tokenInfo = await yamContract.callStatic.tokenInfo(tokenAddress);
           const [tokenType, name, symbol] = tokenInfo;
           const info = {
-            tokenType: tokenType.toNumber(),
+            tokenType: typeof tokenType === 'number' ? tokenType : (tokenType as any).toNumber(),
             name,
             symbol,
           };
