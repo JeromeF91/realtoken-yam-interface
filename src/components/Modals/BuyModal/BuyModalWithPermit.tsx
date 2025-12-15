@@ -216,40 +216,47 @@ export const BuyModalWithPermit: FC<
   const maxTokenBuy: number|undefined = useMemo(() => {
     if(!balance || !offer.price) return undefined;
 
-    const offerAmountBN = new BigNumber(offer.amount);
     const priceBN = new BigNumber(offer.price);
+    const offerTokenDecimals = Number(offer.offerTokenDecimals || 18);
+    const buyerTokenDecimals = Number(offer.buyerTokenDecimals || 18);
     
-    // Get balance in wei (bigNumberbalance is already in wei, balance is in human-readable format)
-    let balanceInWei: BigNumber;
-    if (bigNumberbalance) {
-      balanceInWei = bigNumberbalance;
-    } else {
-      // Convert human-readable balance to wei
-      const balanceBN = new BigNumber(balance);
-      balanceInWei = balanceBN.shiftedBy(Number(offer.offerTokenDecimals || 18));
-    }
+    // 1. Max from offer: offer.amount is in buyerToken wei, convert to human-readable
+    const offerAmountBN = new BigNumber(offer.amount);
+    const maxFromOffer = offerAmountBN.shiftedBy(-buyerTokenDecimals);
     
-    // Calculate max based on balance: balance / price
-    const maxFromBalance = balanceInWei.eq(0) ? new BigNumber(0) : balanceInWei.dividedBy(priceBN);
+    // 2. Max from balance: balance is in human-readable format (offerToken)
+    //    Calculate how much buyerToken we can buy: balance / price
+    const balanceBN = new BigNumber(balance);
+    const maxFromBalance = balanceBN.eq(0) ? new BigNumber(0) : balanceBN.dividedBy(priceBN);
     
-    // Calculate max based on allowance: allowance / price
+    // 3. Max from allowance: allowanceBN is in offerToken wei
+    //    Convert to human-readable, then divide by price
     let maxFromAllowance = new BigNumber(Infinity);
     if (allowanceBN !== undefined) {
-      maxFromAllowance = allowanceBN.eq(0) ? new BigNumber(0) : allowanceBN.dividedBy(priceBN);
+      const allowanceHumanReadable = allowanceBN.shiftedBy(-offerTokenDecimals);
+      maxFromAllowance = allowanceHumanReadable.eq(0) ? new BigNumber(0) : allowanceHumanReadable.dividedBy(priceBN);
     }
     
-    // For buy offers, max quantity = min(offer.amount, balance/price, allowance/price)
+    // Max quantity = min(offer amount, balance/price, allowance/price)
+    // All values are now in human-readable format (buyerToken quantity)
     const max = BigNumber.minimum(
-      offerAmountBN,
+      maxFromOffer,
       maxFromBalance,
       maxFromAllowance
     );
     
-    // Convert back to human-readable format (divide by buyerTokenDecimals)
-    const maxHumanReadable = max.shiftedBy(-Number(offer.buyerTokenDecimals || 18));
+    console.log('Max quantity calculation:', {
+      maxFromOffer: maxFromOffer.toString(),
+      maxFromBalance: maxFromBalance.toString(),
+      maxFromAllowance: maxFromAllowance.toString(),
+      max: max.toString(),
+      balance,
+      allowance: allowanceBN?.toString(),
+      price: offer.price,
+    });
     
-    return maxHumanReadable.toNumber();
-  },[balance, bigNumberbalance, allowanceBN, offer]);
+    return max.toNumber();
+  },[balance, allowanceBN, offer]);
 
   const { approveNeeded, approve, approveLoading } = useApproveOffer(offer, values.amount);
 
