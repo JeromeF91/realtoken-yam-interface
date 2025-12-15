@@ -29,6 +29,7 @@ import { usePrices } from 'src/hooks/interface/usePrices';
 import { useWlProperties } from 'src/hooks/interface/useWlProperties';
 import { Offer } from 'src/types/offer/Offer';
 import { OFFER_TYPE } from 'src/types/offer/OfferType';
+import { getPriceInDollar } from 'src/utils/price';
 import { PropertyCard } from 'src/components/Offer/PropertyCard/PropertyCard';
 import { BuyActionsWithPermit } from 'src/components/Market/BuyActions/BuyActionsWithPermit';
 import { OfferText } from 'src/components/Offer/OfferText';
@@ -679,44 +680,27 @@ const ViewOfferPage = () => {
                         propertyTokenAddress: propertyToken?.contractAddress,
                       });
 
-                      // Try to calculate priceDelta if not available
+                      // Calculate priceDelta using the same logic as getPriceDelta in parseOffer.ts
                       let priceDelta = offer.priceDelta;
-
-                      // Calculate offerPrice if not available
-                      let offerPrice = offer.offerPrice;
-                      if (offerPrice === undefined && offer.price && prices) {
-                        if (offer.type === OFFER_TYPE.SELL) {
-                          const buyTokenPriceInDollar = parseFloat(prices[offer.buyerTokenAddress?.toLowerCase()] || '0');
-                          if (buyTokenPriceInDollar > 0) {
-                            offerPrice = buyTokenPriceInDollar * parseFloat(offer.price);
-                          }
-                        } else if (offer.type === OFFER_TYPE.BUY) {
-                          offerPrice = 1 / parseFloat(offer.price);
-                        } else if (offer.type === OFFER_TYPE.EXCHANGE) {
-                          // For EXCHANGE, try to calculate based on which token is the property token
-                          const buyerTokenPrice = parseFloat(prices[offer.buyerTokenAddress?.toLowerCase()] || '0');
-                          const offerTokenPrice = parseFloat(prices[offer.offerTokenAddress?.toLowerCase()] || '0');
-                          
-                          // If buyerToken has a price, calculate offerPrice as buyerTokenPrice * price
-                          if (buyerTokenPrice > 0) {
-                            offerPrice = buyerTokenPrice * parseFloat(offer.price);
-                          } else if (offerTokenPrice > 0) {
-                            // If offerToken has a price, calculate as offerTokenPrice / price
-                            offerPrice = offerTokenPrice / parseFloat(offer.price);
-                          }
-                        }
-                      }
-
-                      // Calculate priceDelta if not available but we have valid officialPrice and offerPrice
-                      if (priceDelta === undefined && officialPrice !== undefined && officialPrice > 0 && offerPrice !== undefined && offerPrice > 0) {
-                        if (offer.type === OFFER_TYPE.SELL || offer.type === OFFER_TYPE.EXCHANGE) {
-                          // For SELL/EXCHANGE: priceDelta = (offerPrice / officialPrice) - 1
-                          priceDelta = (offerPrice / officialPrice) - 1;
+                      
+                      if (priceDelta === undefined && officialPrice !== undefined && officialPrice > 0 && prices) {
+                        // Use getPriceInDollar to get tokenPriceInDollar (same as getPriceDelta does)
+                        const tokenPriceInDollar = getPriceInDollar(prices, offer);
+                        
+                        if (offer.type === OFFER_TYPE.SELL && tokenPriceInDollar) {
+                          // For SELL: priceDelta = (tokenPriceInDollar / officialPrice) - 1
+                          priceDelta = parseFloat(
+                            new BigNumber(tokenPriceInDollar)
+                              .dividedBy(new BigNumber(officialPrice))
+                              .minus(1)
+                              .toString()
+                          );
                         } else if (offer.type === OFFER_TYPE.BUY) {
                           // For BUY: priceDelta = (1/price - officialPrice) / officialPrice
                           const tokenInDollar = 1 / parseFloat(offer.price);
                           priceDelta = (tokenInDollar - officialPrice) / officialPrice;
                         }
+                        // Note: EXCHANGE offers are not handled by getPriceDelta, so we skip them
                       }
 
                       // Only show if we have both valid values
