@@ -52,20 +52,35 @@ export const fetchPrivateOffersRpc = async (
     const fromBlock = Math.max(0, currentBlock - 100000); // Last ~100k blocks should be enough
     const toBlock = currentBlock;
     
-    // Filter by buyer address (third parameter in OfferCreated event)
-    // OfferCreated event signature: OfferCreated(uint256 indexed offerId, address indexed seller, address indexed buyer)
-    const offerCreatedFilter = yamContract.filters.OfferCreated(null, null, userAddressLower);
-    const events = await yamContract.queryFilter(offerCreatedFilter, fromBlock, toBlock);
+    // IMPORTANT: buyer is NOT indexed in OfferCreated event, so we can't filter by it in the event filter
+    // Event signature: OfferCreated(address indexed offerToken, address indexed buyerToken, address seller, address buyer, uint256 indexed offerId, uint256 price, uint256 amount)
+    // Only offerToken, buyerToken, and offerId are indexed - seller and buyer are NOT indexed
+    // So we need to query all events and filter by buyer address in JavaScript
+    const offerCreatedFilter = yamContract.filters.OfferCreated();
+    const allEvents = await yamContract.queryFilter(offerCreatedFilter, fromBlock, toBlock);
     
-    console.log(`Found ${events.length} OfferCreated events for buyer ${account}`);
+    console.log(`Found ${allEvents.length} total OfferCreated events, filtering for buyer ${userAddressLower}`);
     
-    if (events.length === 0) {
+    // Filter events by buyer address (buyer is the 4th parameter, index 3 in the args array)
+    // Event args: [offerToken, buyerToken, seller, buyer, offerId, price, amount]
+    const filteredEvents = allEvents.filter(event => {
+      if (!event.args || event.args.length < 4) {
+        return false;
+      }
+      // buyer is at index 3 in the args array
+      const buyer = event.args[3];
+      return buyer && buyer.toLowerCase() === userAddressLower;
+    });
+    
+    console.log(`Found ${filteredEvents.length} OfferCreated events for buyer ${account}`);
+    
+    if (filteredEvents.length === 0) {
       return [];
     }
 
-    // Extract offer IDs from events
+    // Extract offer IDs from filtered events
     const privateOfferIds: number[] = [];
-    events.forEach(event => {
+    filteredEvents.forEach(event => {
       if (event.args && event.args.offerId !== undefined) {
         const offerId = event.args.offerId.toNumber();
         privateOfferIds.push(offerId);
