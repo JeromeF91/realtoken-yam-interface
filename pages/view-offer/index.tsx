@@ -859,15 +859,28 @@ const ViewOfferPage = () => {
                       
                       if (!propertiesToCheck || propertiesToCheck.length === 0) return null;
                       
+                      // Debug: Check if properties have tokenIdRules
+                      const sampleProperty = propertiesToCheck.find(
+                        (p: any) => p.contractAddress?.toLowerCase() === offer.buyerTokenAddress?.toLowerCase() ||
+                                    p.contractAddress?.toLowerCase() === offer.offerTokenAddress?.toLowerCase()
+                      );
+                      
                       console.log('Whitelisting check:', {
                         account,
                         wlProperties,
+                        wlPropertiesLength: wlProperties.length,
                         offerType: offer.type,
                         buyerTokenAddress: offer.buyerTokenAddress,
                         offerTokenAddress: offer.offerTokenAddress,
                         propertiesToCheckCount: propertiesToCheck.length,
                         propertiesTokenCount: propertiesToken?.length,
                         propertyTokensCount: propertyTokens.length,
+                        sampleProperty: sampleProperty ? {
+                          shortName: sampleProperty.shortName,
+                          contractAddress: sampleProperty.contractAddress,
+                          tokenIdRules: sampleProperty.tokenIdRules,
+                          hasTokenIdRules: 'tokenIdRules' in sampleProperty,
+                        } : 'not found',
                       });
                       
                       const tokenNotWhitelisted = getNotWhitelistedTokens(
