@@ -237,7 +237,7 @@ export const fetchPublicOffersRpc = async (
             let tokenType = 3;
             try {
               const tokenTypeBN = await yamContract.callStatic.getTokenType(tokenAddress);
-              tokenType = tokenTypeBN.toNumber();
+              tokenType = typeof tokenTypeBN === 'number' ? tokenTypeBN : (tokenTypeBN as any).toNumber();
             } catch (e) {
               // Silently use default token type
             }
