@@ -18,10 +18,10 @@ export const ShowOfferAction: FC<ShowOfferActionProps> = ({ offer, className }) 
             !offersAreLoading ? (
                 <ActionIcon
                     color={'brand'}
-                    onClick={() => openInNewTab(`/offer/${offer.offerId}`)}
+                    onClick={() => openInNewTab(`/view-offer?id=${offer.offerId}`)}
                     className={className}
                 >
-                    <IconEye size={16} aria-label={'Show Offer'} />
+                    <IconEye size={16} aria-label={'View Offer'} />
                 </ActionIcon>
             )
             : undefined

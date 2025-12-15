@@ -81,7 +81,7 @@ export const MatchedOffer = ({ offerBestType, offer, amount } : MatchedOfferProp
                 <Flex gap={"xs"}>
                     <div className={classes.offerId}>{offer.offerId}</div>
                     <OfferTypeBadge offerType={offer.type ?? OFFER_TYPE.EXCHANGE} sx={{ flexGrow: 1 }}/>
-                    <ActionIcon color={"brand"} onClick={() => openInNewTab(`/offer/${offer.offerId}`)} style={{ height: '40px', width: '2.4rem' }} variant={"outline"}>
+                    <ActionIcon color={"brand"} onClick={() => openInNewTab(`/view-offer?id=${offer.offerId}`)} style={{ height: '40px', width: '2.4rem' }} variant={"outline"}>
                         <IconExternalLink size={24}/>
                     </ActionIcon>
                 </Flex>

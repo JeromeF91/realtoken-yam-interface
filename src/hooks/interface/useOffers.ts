@@ -45,14 +45,13 @@ export const useOffers: UseOffers = () => {
         wlProperties &&
         prices
       ) {
-        // Use RPC instead of GraphQL to get quantity and price directly from contract
-        const { fetchAllOffersRpc } = await import('../../utils/rpc/fetchAllOffersRpc');
-        offersData = await fetchAllOffersRpc(
+        offersData = await fetchOffersTheGraph(
           account,
           chainId,
           properties,
           wlProperties,
-          prices
+          prices,
+          () => {}
         );
       }
 
