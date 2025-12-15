@@ -6,9 +6,21 @@ import { Erc20 } from '../../abis/types/Erc20';
 import BigNumber from 'bignumber.js';
 
 /**
+ * Provider cache to avoid creating multiple providers for the same chain
+ * This prevents multiple eth_chainId calls
+ */
+const providerCache = new Map<number, JsonRpcProvider>();
+
+/**
  * Get an RPC provider for a given chain with explicit network configuration
+ * Providers are cached per chainId to avoid repeated eth_chainId calls
  */
 export const getRpcProvider = (chainId: number): JsonRpcProvider => {
+  // Return cached provider if available
+  if (providerCache.has(chainId)) {
+    return providerCache.get(chainId)!;
+  }
+
   const chain = CHAINS[chainId as ChainsID];
   if (!chain) {
     throw new Error(`Unsupported chainId: ${chainId}`);
@@ -21,7 +33,13 @@ export const getRpcProvider = (chainId: number): JsonRpcProvider => {
   };
   
   // Pass network explicitly to avoid "could not detect network" errors
-  return new JsonRpcProvider(chain.rpcUrl, network);
+  // Also disable automatic network detection to prevent eth_chainId calls
+  const provider = new JsonRpcProvider(chain.rpcUrl, network);
+  
+  // Cache the provider for reuse
+  providerCache.set(chainId, provider);
+  
+  return provider;
 };
 
 /**
