@@ -846,6 +846,37 @@ const ViewOfferPage = () => {
                         Delete Offer
                       </Button>
                     ) : null}
+                    
+                    {(() => {
+                      // Check whitelisting status
+                      if (!account || !offer || !wlProperties || !propertiesToken) return null;
+                      
+                      const tokenNotWhitelisted = getNotWhitelistedTokens(
+                        wlProperties,
+                        offer,
+                        propertiesToken
+                      );
+                      
+                      if (tokenNotWhitelisted.length > 0) {
+                        return (
+                          <Alert icon={<IconAlertCircle size={16} />} color="yellow" title="Whitelisting Required" mb="md">
+                            <Text size="sm" mb="xs">
+                              You need to be whitelisted to buy tokens from this offer:
+                            </Text>
+                            <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                              {tokenNotWhitelisted.map((token, index) => (
+                                <li key={`not-wl-${index}`}>
+                                  <Text size="sm">{token.shortName}</Text>
+                                </li>
+                              ))}
+                            </ul>
+                          </Alert>
+                        );
+                      }
+                      
+                      return null;
+                    })()}
+                    
                     <BuyActionsWithPermit
                       buyOffer={offer}
                       loading={isLoading}
