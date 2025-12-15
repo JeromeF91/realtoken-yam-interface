@@ -19,13 +19,19 @@ const TransfersPage = () => {
   const queryClient = useQueryClient();
   const { chainId } = useWeb3React();
 
-  // Prefetch properties when addOffer tab is active or about to be active
+  // Prefetch properties API when page loads or when addOffer tab becomes active
   useEffect(() => {
     if (!chainId) return;
 
     // Prefetch properties API call
     const prefetchProperties = async () => {
       try {
+        // Check if data is already in cache
+        const cachedData = queryClient.getQueryData(['properties', chainId]);
+        if (cachedData) {
+          return; // Already cached, no need to prefetch
+        }
+
         const response = await fetch(`/api/properties/${chainId}`);
         if (response.ok) {
           const responseJson = await response.json();
@@ -39,11 +45,40 @@ const TransfersPage = () => {
       }
     };
 
-    // Prefetch when addOffer tab is active or when hovering over it
+    // Prefetch when addOffer tab is active
     if (activeTab === 'addOffer') {
       prefetchProperties();
     }
   }, [activeTab, chainId, queryClient]);
+
+  // Also prefetch on initial load if chainId is available
+  useEffect(() => {
+    if (!chainId) return;
+
+    const prefetchOnLoad = async () => {
+      try {
+        // Check if data is already in cache
+        const cachedData = queryClient.getQueryData(['properties', chainId]);
+        if (cachedData) {
+          return; // Already cached
+        }
+
+        // Prefetch in background
+        const response = await fetch(`/api/properties/${chainId}`);
+        if (response.ok) {
+          const responseJson = await response.json();
+          const mergedProperties = mergeExtendedProperties(responseJson, getExtendedTokens(chainId));
+          queryClient.setQueryData(['properties', chainId], mergedProperties);
+        }
+      } catch (error) {
+        // Silently fail - the hook will fetch it when needed
+        console.error('Error prefetching properties on load:', error);
+      }
+    };
+
+    // Prefetch on mount (runs once when component mounts)
+    prefetchOnLoad();
+  }, [chainId, queryClient]);
   
   return (
     <ConnectedProvider>
