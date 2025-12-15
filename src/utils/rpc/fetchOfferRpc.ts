@@ -190,7 +190,7 @@ export const fetchOfferRpc = async (
           let tokenType = 3; // Default to ERC20
           try {
             const tokenTypeBN = await yamContract.callStatic.getTokenType(tokenAddress);
-            tokenType = tokenTypeBN.toNumber();
+            tokenType = typeof tokenTypeBN === 'number' ? tokenTypeBN : tokenTypeBN.toNumber();
           } catch (e) {
             console.warn(`Could not get tokenType for ${tokenName}, using default 3`);
           }
@@ -207,7 +207,7 @@ export const fetchOfferRpc = async (
           let tokenType = 3; // Default to ERC20
           try {
             const tokenTypeBN = await yamContract.callStatic.getTokenType(tokenAddress);
-            tokenType = tokenTypeBN.toNumber();
+            tokenType = typeof tokenTypeBN === 'number' ? tokenTypeBN : tokenTypeBN.toNumber();
           } catch (e) {
             // If getTokenType also fails, it's likely not a valid token contract
             console.warn(`Could not get tokenType for ${tokenName}, using default 3`);
