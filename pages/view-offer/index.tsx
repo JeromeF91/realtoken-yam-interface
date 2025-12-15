@@ -899,6 +899,7 @@ const ViewOfferPage = () => {
                       });
                       
                       if (tokenNotWhitelisted.length > 0) {
+                        console.log('Rendering whitelisting alert with tokens:', tokenNotWhitelisted.map(t => t.shortName));
                         return (
                           <Alert icon={<IconAlertCircle size={16} />} color="yellow" title="Whitelisting Required" mb="md">
                             <Text size="sm" mb="xs">
@@ -915,6 +916,7 @@ const ViewOfferPage = () => {
                         );
                       }
                       
+                      console.log('No whitelisting alert - all tokens are whitelisted or no tokens found');
                       return null;
                     })()}
                     
