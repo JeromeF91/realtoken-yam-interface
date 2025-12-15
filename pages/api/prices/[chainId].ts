@@ -72,8 +72,8 @@ const handler: NextApiHandler = async (
 ) => {
   try {
     const { chainId: id } = req.query;
-    const chainId: number = id as unknown as number;
-    if (!chainId) return res.status(400).json({ error: 'ChainId is missing.' });
+    const chainId: number = parseInt(id as string, 10);
+    if (isNaN(chainId)) return res.status(400).json({ error: 'ChainId is missing or invalid.' });
 
     // Check cache first
     const cached = getCachedPrices(chainId);
