@@ -14,9 +14,9 @@ export const useWlProperties: UseWlProperties = () => {
     const { chainId, account } = useWeb3React();
 
     const { isLoading: wlPropertiesAreLoading, data: wlProperties, isSuccess } = useQuery({
-        queryKey: ['wlProperties', chainId],
+        queryKey: ['wlProperties', chainId, account],
         meta: { errCode: REACT_QUERY_ERRORS.FETCH_WL_PROPERTIES },
-        enabled: !!chainId,
+        enabled: !!chainId && !!account,
         queryFn: async (): Promise<number[]> => {
             if(!chainId || !account) return [];
 
