@@ -436,28 +436,51 @@ const ViewOfferPage = () => {
                           try {
                             // The amount from the contract represents how much buyerToken is being sold
                             // Quantity represents how much buyerToken the buyer will receive
-                            const buyerTokenDecimals = Number(offer.buyerTokenDecimals || 18);
                             
                             // Ensure amount is a string or number
                             const amountStr = offer.amount?.toString() || '0';
-                            const amountBN = new BigNumber(amountStr);
-                            
-                            // Validate decimals
-                            if (isNaN(buyerTokenDecimals) || buyerTokenDecimals < 0 || buyerTokenDecimals > 18) {
-                              console.warn('Invalid buyerTokenDecimals:', offer.buyerTokenDecimals, 'using default 18');
-                              const result = amountBN.shiftedBy(-18);
-                              return result.toFixed(4);
+                            if (!amountStr || amountStr === '0') {
+                              return '0';
                             }
                             
-                            // Use buyerTokenDecimals to normalize the amount
-                            const result = amountBN.shiftedBy(-buyerTokenDecimals);
+                            const amountBN = new BigNumber(amountStr);
+                            
+                            // Determine which decimals to use based on offer type
+                            // For exchange offers, we might need to use offerTokenDecimals
+                            // But typically, amount represents buyerToken quantity
+                            let decimals = Number(offer.buyerTokenDecimals);
+                            
+                            // If buyerTokenDecimals is invalid, try offerTokenDecimals
+                            if (isNaN(decimals) || decimals <= 0 || decimals > 18) {
+                              decimals = Number(offer.offerTokenDecimals);
+                            }
+                            
+                            // If still invalid, default to 18
+                            if (isNaN(decimals) || decimals <= 0 || decimals > 18) {
+                              console.warn('Invalid decimals, using default 18. buyerTokenDecimals:', offer.buyerTokenDecimals, 'offerTokenDecimals:', offer.offerTokenDecimals);
+                              decimals = 18;
+                            }
+                            
+                            // Use decimals to normalize the amount
+                            const result = amountBN.shiftedBy(-decimals);
                             
                             // Format with up to 4 decimal places, removing trailing zeros
-                            return result.toFixed(4).replace(/\.?0+$/, '');
+                            const formatted = result.toFixed(4).replace(/\.?0+$/, '');
+                            
+                            // Log for debugging
+                            console.log('Quantity calculation:', {
+                              rawAmount: amountStr,
+                              decimals: decimals,
+                              result: result.toString(),
+                              formatted: formatted,
+                            });
+                            
+                            return formatted;
                           } catch (error) {
                             console.error('Error calculating quantity:', error, {
                               amount: offer.amount,
                               buyerTokenDecimals: offer.buyerTokenDecimals,
+                              offerTokenDecimals: offer.offerTokenDecimals,
                             });
                             return '0';
                           }
