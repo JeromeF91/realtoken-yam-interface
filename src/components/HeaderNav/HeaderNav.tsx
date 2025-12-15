@@ -25,7 +25,8 @@ export const HeaderNav: FC = () => {
         >
           {t('titleCat1')}
         </Text>
-        <Text
+        {/* Hidden: Your Offers menu item */}
+        {/* <Text
           size={'xl'}
           fw={700}
           className={classes.link}
@@ -33,8 +34,9 @@ export const HeaderNav: FC = () => {
           onClick={() => router.push('/my-offers')}
         >
           {t('titleCat2')}
-        </Text>
-        <Text
+        </Text> */}
+        {/* Hidden: Historic menu item */}
+        {/* <Text
           size={'xl'}
           fw={700}
           className={classes.link}
@@ -42,7 +44,7 @@ export const HeaderNav: FC = () => {
           onClick={() => router.push('/historic')}
         >
           {t('historic')}
-        </Text>
+        </Text> */}
         { isRole(role,[USER_ROLE.MODERATOR,USER_ROLE.ADMIN]) ? 
           <Text
             size={'xl'}
