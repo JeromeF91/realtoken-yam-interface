@@ -126,8 +126,8 @@ export const fetchOfferRpc = async (
     });
     
     // Based on actual contract return values from the user's test:
-    // value0: '0x0643FFB30aDD44eF5c74996AD57A03A2244b6F28' 
-    // value1: '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83'
+    // value0: '0x0643FFB30aDD44eF5c74996AD57A03A2244b6F28' - token contract address (confirmed)
+    // value1: '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83' - token contract address
     // value2: '0x540A623c7ed0c09E1B3916A83d93f2F59d44eA89' - seller wallet address (confirmed)
     // value3: '0x0000000000000000000000000000000000000000' - buyer address (zero for public)
     // value4: price (BigNumber)
