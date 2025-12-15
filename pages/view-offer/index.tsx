@@ -241,19 +241,20 @@ const ViewOfferPage = () => {
     if (!offer || !account) {
       return false;
     }
-    // Check all possible address fields to find which one matches the account
-    // The seller address might be in sellerAddress, but let's check all fields
     const accountLower = account.toLowerCase();
+    
+    // Check all address fields to see which one matches
+    // The seller address should be the wallet address of the person who created the offer
     const sellerAddressLower = (offer.sellerAddress || '').toLowerCase();
     const buyerAddressLower = (offer.buyerAddress || '').toLowerCase();
     const offerTokenAddressLower = (offer.offerTokenAddress || '').toLowerCase();
     const buyerTokenAddressLower = (offer.buyerTokenAddress || '').toLowerCase();
     
-    // Check if sellerAddress matches (primary check)
+    // Check each field
     const isSellerMatch = sellerAddressLower === accountLower;
-    
-    // Also check buyerAddress in case the offer structure is different
     const isBuyerMatch = buyerAddressLower === accountLower;
+    const isOfferTokenMatch = offerTokenAddressLower === accountLower;
+    const isBuyerTokenMatch = buyerTokenAddressLower === accountLower;
     
     // Log all addresses for debugging
     console.log('isAccountOffer check - all addresses:', {
@@ -265,14 +266,19 @@ const ViewOfferPage = () => {
       buyerAddressLower,
       offerTokenAddress: offer.offerTokenAddress,
       buyerTokenAddress: offer.buyerTokenAddress,
-      isSellerMatch,
-      isBuyerMatch,
+      matches: {
+        seller: isSellerMatch,
+        buyer: isBuyerMatch,
+        offerToken: isOfferTokenMatch,
+        buyerToken: isBuyerTokenMatch,
+      },
       offerId: offer.offerId,
     });
     
-    // Return true if either seller or buyer address matches (for now, we'll use seller)
-    // But if sellerAddress is wrong, we might need to check buyerAddress
-    return isSellerMatch || isBuyerMatch;
+    // For now, check if sellerAddress matches
+    // If sellerAddress is wrong, we might need to check the raw contract return values
+    // But typically sellerAddress should be the wallet address
+    return isSellerMatch;
   }, [offer, account]);
 
   const isConnected = !!account && !!provider && !!effectiveChainId;
