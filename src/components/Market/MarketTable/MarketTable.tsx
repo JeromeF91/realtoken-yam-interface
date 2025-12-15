@@ -92,13 +92,23 @@ export const MarketTable: FC = () => {
     }
   }, [nameFilterValue]);
 
-  const { offers: data } = useTypedOffers(offers, offersAreLoading);
+  const { offers: data, sellCount, buyCount, exchangeCount } = useTypedOffers(offers, offersAreLoading);
   const columns = useRightTableColumn(OFFERS_TYPE.PUBLIC);
 
   // Debug logging
   useEffect(() => {
     console.log('MarketTable - offers:', offers?.length, 'data:', data?.length, 'loading:', offersAreLoading);
-  }, [offers, data, offersAreLoading]);
+    console.log('MarketTable - offer types:', { sellCount, buyCount, exchangeCount });
+    if (offers && offers.length > 0) {
+      console.log('MarketTable - offer types breakdown:', {
+        sell: offers.filter(o => o.type === 'SELL').length,
+        buy: offers.filter(o => o.type === 'BUY').length,
+        exchange: offers.filter(o => o.type === 'EXCHANGE').length,
+        undefined: offers.filter(o => !o.type).length,
+      });
+      console.log('MarketTable - first offer type:', offers[0]?.type, offers[0]?.offerId);
+    }
+  }, [offers, data, offersAreLoading, sellCount, buyCount, exchangeCount]);
 
   const table = useReactTable({
     data: data || [],
