@@ -325,13 +325,13 @@ const ViewOfferPage = () => {
                       <Text fw={700}>Quantity</Text>
                       <Text>
                         {(() => {
-                          // The amount from the contract is always in offerToken smallest units
-                          // Quantity represents how much offerToken is being sold
-                          const offerTokenDecimals = Number(offer.offerTokenDecimals || 18);
+                          // The amount from the contract represents how much buyerToken is being sold
+                          // Quantity represents how much buyerToken the buyer will receive
+                          const buyerTokenDecimals = Number(offer.buyerTokenDecimals || 18);
                           const amountBN = new BigNumber(offer.amount);
                           
-                          // Always use offerTokenDecimals to normalize the amount
-                          const result = amountBN.shiftedBy(-offerTokenDecimals);
+                          // Use buyerTokenDecimals to normalize the amount
+                          const result = amountBN.shiftedBy(-buyerTokenDecimals);
                           
                           return result.toFixed(4);
                         })()}
