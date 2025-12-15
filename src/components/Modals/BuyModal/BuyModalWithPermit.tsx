@@ -292,7 +292,28 @@ export const BuyModalWithPermit: FC<
               </Flex>
               <Flex direction={"column"} >
                 <Text fw={700}>{offer.type ? amountTranslation.get(offer.type) : ""}</Text>
-                <Text>{offer.availableAmount}</Text>
+                <Text>
+                  {(() => {
+                    try {
+                      // availableAmount is in buyerToken wei, convert to human-readable format
+                      const availableAmountBN = new BigNumber(offer.availableAmount || '0');
+                      const buyerTokenDecimals = Number(offer.buyerTokenDecimals || 18);
+                      
+                      if (availableAmountBN.isZero()) {
+                        return '0';
+                      }
+                      
+                      // Convert from wei to human-readable format
+                      const humanReadable = availableAmountBN.shiftedBy(-buyerTokenDecimals);
+                      
+                      // Format with up to 4 decimal places, removing trailing zeros
+                      return humanReadable.toFixed(4).replace(/\.?0+$/, '');
+                    } catch (error) {
+                      console.error('Error formatting availableAmount:', error);
+                      return offer.availableAmount || '0';
+                    }
+                  })()}
+                </Text>
               </Flex>
               <Flex direction={"column"}>
                   <Text fw={700}>{offer.type ? priceTranslation.get(offer.type) : ""}</Text>
