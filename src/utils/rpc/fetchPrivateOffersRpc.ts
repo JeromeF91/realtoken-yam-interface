@@ -79,7 +79,7 @@ export const fetchPrivateOffersRpc = async (
     }
 
     // Limit the number of offers to fetch to prevent excessive RPC calls
-    const MAX_OFFERS_TO_FETCH = 1000;
+    const MAX_OFFERS_TO_FETCH = 100;
     const offersToFetch = privateOfferIds.length > MAX_OFFERS_TO_FETCH 
       ? privateOfferIds.slice(-MAX_OFFERS_TO_FETCH) // Get most recent offers
       : privateOfferIds;
