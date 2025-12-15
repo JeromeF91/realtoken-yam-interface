@@ -191,7 +191,7 @@ export const fetchPublicOffersRpc = async (
           });
         } catch (error: any) {
           // Fallback to ERC20 if tokenInfo fails (token might not be registered in YAM contract)
-          console.warn(`tokenInfo failed for ${tokenAddress}, using ERC20 fallback:`, error?.message);
+          // This is expected for some tokens, so we silently fall back
           try {
             const erc20Info = await getTokenInfo(tokenAddress, provider);
             let tokenType = 3; // Default to ERC20
@@ -199,7 +199,7 @@ export const fetchPublicOffersRpc = async (
               const tokenTypeBN = await yamContract.callStatic.getTokenType(tokenAddress);
               tokenType = tokenTypeBN.toNumber();
             } catch (e) {
-              console.warn(`Could not get tokenType for ${tokenAddress}, using default 3`);
+              // Silently use default token type
             }
             tokenInfoCache.set(tokenAddress, {
               tokenType,
@@ -207,13 +207,13 @@ export const fetchPublicOffersRpc = async (
               symbol: erc20Info.symbol,
             });
           } catch (erc20Error: any) {
-            console.warn(`Failed to get ERC20 info for ${tokenAddress}:`, erc20Error?.message);
+            // Final fallback: use address-based naming
             let tokenType = 3;
             try {
               const tokenTypeBN = await yamContract.callStatic.getTokenType(tokenAddress);
               tokenType = tokenTypeBN.toNumber();
             } catch (e) {
-              console.warn(`Could not get tokenType for ${tokenAddress}, using default 3`);
+              // Silently use default token type
             }
             const addressShort = `${tokenAddress.substring(0, 6)}...${tokenAddress.substring(38)}`;
             tokenInfoCache.set(tokenAddress, {
