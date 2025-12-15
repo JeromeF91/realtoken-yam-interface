@@ -17,7 +17,6 @@ import { MarketSubRow } from '../MarketSubRow';
 import { useTypedOffers } from 'src/hooks/offers/useTypedOffers';
 import { OFFERS_TYPE, useRightTableColumn } from 'src/hooks/useRightTableColumns';
 import { MarketSort } from '../MarketSort/MarketSort';
-import { useOffers } from '../../../hooks/interface/useOffers';
 import { usePrivateOffers } from '../../../hooks/offers/usePrivateOffers';
 
 export const MarketTablePrivate: FC = () => {
@@ -31,6 +30,7 @@ export const MarketTablePrivate: FC = () => {
   });
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
+  // Component is only rendered when tab is active, so this will only fetch when needed
   const { offers: privateOffers, offersAreLoading, refetch } = usePrivateOffers();
   const { offers, sellCount, buyCount, exchangeCount } = useTypedOffers(privateOffers)
   const columns = useRightTableColumn(OFFERS_TYPE.PRIVATE);
