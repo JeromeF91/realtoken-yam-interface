@@ -646,20 +646,33 @@ const ViewOfferPage = () => {
                                 : undefined;
                               
                               let priceInUSD: number | undefined;
+                              let offerTokenAmount: number | undefined;
+                              let offerTokenSymbol: string | undefined;
                               
                               if (isBuyerTokenProperty && offerTokenPriceUSD !== undefined && offerTokenPriceUSD > 0) {
                                 // Property token is buyerToken: buyerTokenPrice = offerTokenPrice * price
                                 priceInUSD = offerTokenPriceUSD * priceBN.toNumber();
+                                // The price represents how much buyerToken per offerToken, so for 1 buyerToken we need 1/price offerTokens
+                                offerTokenAmount = 1 / priceBN.toNumber();
+                                offerTokenSymbol = offer.offerTokenName || offer.offerTokenAddress?.slice(0, 6).toUpperCase();
                               } else if (isOfferTokenProperty && buyerTokenPriceUSD !== undefined && buyerTokenPriceUSD > 0) {
                                 // Property token is offerToken: offerTokenPrice = buyerTokenPrice / price
                                 priceInUSD = buyerTokenPriceUSD / priceBN.toNumber();
+                                // The price represents how much buyerToken per offerToken, so for 1 offerToken we need price buyerTokens
+                                offerTokenAmount = priceBN.toNumber();
+                                offerTokenSymbol = offer.buyerTokenName || offer.buyerTokenAddress?.slice(0, 6).toUpperCase();
                               }
                               
-                              if (priceInUSD !== undefined && priceInUSD > 0) {
+                              if (priceInUSD !== undefined && priceInUSD > 0 && offerTokenAmount !== undefined) {
                                 return (
-                                  <Text>
-                                    {`${priceInUSD.toFixed(2)} USD`}
-                                  </Text>
+                                  <Flex direction="column" gap={2}>
+                                    <Text>
+                                      {`${priceInUSD.toFixed(2)} USD`}
+                                    </Text>
+                                    <Text size="sm" c="dimmed">
+                                      {`${offerTokenAmount.toFixed(4)} ${offerTokenSymbol}`}
+                                    </Text>
+                                  </Flex>
                                 );
                               }
                             }
