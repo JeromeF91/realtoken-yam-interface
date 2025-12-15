@@ -108,6 +108,13 @@ export const MarketTable: FC = () => {
       });
       console.log('MarketTable - first offer type:', offers[0]?.type, offers[0]?.offerId);
     }
+    if (data && data.length > 0) {
+      console.log('MarketTable - table data sample:', {
+        firstOfferId: data[0]?.offerId,
+        firstOfferType: data[0]?.type,
+        allOfferIds: data.map(o => o.offerId),
+      });
+    }
   }, [offers, data, offersAreLoading, sellCount, buyCount, exchangeCount]);
 
   const table = useReactTable({
