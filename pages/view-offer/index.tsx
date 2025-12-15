@@ -624,6 +624,47 @@ const ViewOfferPage = () => {
                             );
                           }
                           
+                          // For EXCHANGE offers, calculate USD value using prices API
+                          if (offer.type === OFFER_TYPE.EXCHANGE && prices) {
+                            // Find the property token to determine which token we're pricing
+                            const propertyToken = propertyTokens.find(
+                              t => t.contractAddress?.toLowerCase() === offer.buyerTokenAddress?.toLowerCase()
+                            ) || propertyTokens.find(
+                              t => t.contractAddress?.toLowerCase() === offer.offerTokenAddress?.toLowerCase()
+                            );
+                            
+                            if (propertyToken) {
+                              const isBuyerTokenProperty = propertyToken.contractAddress?.toLowerCase() === offer.buyerTokenAddress?.toLowerCase();
+                              const isOfferTokenProperty = propertyToken.contractAddress?.toLowerCase() === offer.offerTokenAddress?.toLowerCase();
+                              
+                              // Get USD prices for both tokens
+                              const buyerTokenPriceUSD = prices[offer.buyerTokenAddress?.toLowerCase()] 
+                                ? parseFloat(prices[offer.buyerTokenAddress?.toLowerCase()] || '0')
+                                : undefined;
+                              const offerTokenPriceUSD = prices[offer.offerTokenAddress?.toLowerCase()] 
+                                ? parseFloat(prices[offer.offerTokenAddress?.toLowerCase()] || '0')
+                                : undefined;
+                              
+                              let priceInUSD: number | undefined;
+                              
+                              if (isBuyerTokenProperty && offerTokenPriceUSD !== undefined && offerTokenPriceUSD > 0) {
+                                // Property token is buyerToken: buyerTokenPrice = offerTokenPrice * price
+                                priceInUSD = offerTokenPriceUSD * priceBN.toNumber();
+                              } else if (isOfferTokenProperty && buyerTokenPriceUSD !== undefined && buyerTokenPriceUSD > 0) {
+                                // Property token is offerToken: offerTokenPrice = buyerTokenPrice / price
+                                priceInUSD = buyerTokenPriceUSD / priceBN.toNumber();
+                              }
+                              
+                              if (priceInUSD !== undefined && priceInUSD > 0) {
+                                return (
+                                  <Text>
+                                    {`${priceInUSD.toFixed(2)} USD`}
+                                  </Text>
+                                );
+                              }
+                            }
+                          }
+                          
                           // If price is 0 or invalid, show error
                           if (priceBN.isZero() || priceBN.isNaN() || !priceBN.isFinite()) {
                             return (
