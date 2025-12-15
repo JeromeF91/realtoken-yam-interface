@@ -80,22 +80,17 @@ export const buy = async (
         const paymentTokenAmount = new BigNumber(parseInt(amountInWei.multipliedBy(priceInWei).shiftedBy(-offer.buyerTokenDecimals).toString()));
         const transactionDeadline = Math.floor(Date.now() / 1000) + 3600; // permit valable during 1h
 
-        console.log("paymentTokenAmount (offerToken): ", paymentTokenAmount.toString())
-
         let approveNeeded = false;
         if(buyMethod == BUY_METHODS.buyWithApprove){
           try {
             // Use callStatic for read-only call and handle errors gracefully
             const allowance = await paymentToken.callStatic.allowance(account, realTokenYamUpgradeable.address);
-            console.log("allowance: ", allowance.toString());
             if(allowance.lt(paymentTokenAmount.toString(10))){
               approveNeeded = true;
             }
           } catch (err: any) {
-            console.error('Error checking allowance in buy.ts:', err);
             // If allowance call reverts, assume approval is needed
             if (err?.code === 'CALL_EXCEPTION' || err?.message?.includes('revert')) {
-              console.warn('Token does not support allowance() function, assuming approval needed');
               approveNeeded = true;
             } else {
               // For other errors, re-throw
@@ -103,8 +98,6 @@ export const buy = async (
             }
           }
         }
-
-        console.log("approveNeeded: ", approveNeeded)
 
         // When buying, we need to check the token type of the payment token (offerToken)
         const paymentTokenType = await realTokenYamUpgradeable.getTokenType(

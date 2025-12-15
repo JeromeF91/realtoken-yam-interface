@@ -85,29 +85,16 @@ export const BuyModalWithPermit: FC<
   
   // Get property token info - when buying, we're buying the buyerToken (property token)
   // Based on the view-offer page display:
-  // - "Seller Address" shows offer.buyerTokenAddress (0x7fbbab3a307765f42beb3d7a0b94dcbaa3240370) - this is the seller's wallet
-  // - "Token Smart Contract" shows offer.sellerAddress (0x3785c1ed79548580fd49a000bf9e5884e8d1207b) - this is the property token contract
+  // - "Seller Address" shows offer.buyerTokenAddress - this is the seller's wallet
+  // - "Token Smart Contract" shows offer.sellerAddress - this is the property token contract
   // So we need to use sellerAddress to get the property token!
   const { propertyToken: buyerPropertyToken } = usePropertyToken(offer.sellerAddress);
   const { propertiesIsloading } = usePropertiesToken();
-  
-  console.log('BuyModal: Property token lookup:', {
-    offerType: offer.type,
-    buyerTokenAddress: offer.buyerTokenAddress, // This is actually the seller's wallet address
-    offerTokenAddress: offer.offerTokenAddress, // This is what you pay with (USDC)
-    sellerAddress: offer.sellerAddress, // This is actually the Token Smart Contract (property token)
-    foundPropertyToken: !!buyerPropertyToken,
-    propertyTokenShortName: buyerPropertyToken?.shortName,
-    propertyTokenContractAddress: buyerPropertyToken?.contractAddress,
-    expectedPropertyTokenAddress: '0x3785c1ed79548580fd49a000bf9e5884e8d1207b',
-    expectedSellerAddress: '0x7fbbab3a307765f42beb3d7a0b94dcbaa3240370',
-  });
   
   // Use property token short name if available, otherwise fall back to symbol
   const buyerTokenDisplayName = useMemo(() => {
     // First priority: property token short name
     if (buyerPropertyToken?.shortName) {
-      console.log('BuyModal: Using property token short name:', buyerPropertyToken.shortName, 'for address:', offer.buyerTokenAddress);
       return buyerPropertyToken.shortName;
     }
     
@@ -116,7 +103,6 @@ export const BuyModalWithPermit: FC<
         buyTokenSymbol !== '0X7FBB' && 
         !buyTokenSymbol.match(/^0x[a-fA-F0-9]{4,}$/i) && 
         buyTokenSymbol.length < 20) {
-      console.log('BuyModal: Using buyTokenSymbol:', buyTokenSymbol);
       return buyTokenSymbol;
     }
     
@@ -125,17 +111,8 @@ export const BuyModalWithPermit: FC<
         offer.buyerTokenName !== '0X7FBB' && 
         !offer.buyerTokenName.match(/^0x[a-fA-F0-9]{4,}$/i) && 
         offer.buyerTokenName.length < 20) {
-      console.log('BuyModal: Using buyerTokenName:', offer.buyerTokenName);
       return offer.buyerTokenName;
     }
-    
-    // Debug logging
-    console.log('BuyModal: Property token lookup failed');
-    console.log('  - buyerTokenAddress:', offer.buyerTokenAddress);
-    console.log('  - buyerPropertyToken:', buyerPropertyToken);
-    console.log('  - propertiesIsloading:', propertiesIsloading);
-    console.log('  - buyTokenSymbol:', buyTokenSymbol);
-    console.log('  - buyerTokenName:', offer.buyerTokenName);
     
     // Last resort: return a formatted address (but only if properties have loaded)
     if (!propertiesIsloading) {
@@ -159,12 +136,10 @@ export const BuyModalWithPermit: FC<
   const getOfferTokenInfos = async () => {
     if(!offerToken) return;
     try{
-      // console.log("offerToken: ", offerToken)
-      // console.log("sellerAddress: ", sellerAddress)
       const balanceSeller = await offerToken.balanceOf(offer.sellerAddress)
       setOfferTokenSellerBalance((balanceSeller ?? BigNumber(0)).toString())
     }catch(err){
-      console.log(err)
+      // Silently handle errors
     }
   }
   useEffect(() => {
@@ -222,7 +197,6 @@ export const BuyModalWithPermit: FC<
   },[balance,offer]);
 
   const { approveNeeded, approve, approveLoading } = useApproveOffer(offer, values.amount);
-  console.log('approveNeeded: ', approveNeeded)
 
   const priceTranslation: Map<OFFER_TYPE,string> = new Map<OFFER_TYPE,string>([
     [OFFER_TYPE.BUY,t("buyOfferTypePrice")],
