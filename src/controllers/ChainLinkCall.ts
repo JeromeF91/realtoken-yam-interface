@@ -1,4 +1,4 @@
-import { JsonRpcProvider } from "@ethersproject/providers";
+import { JsonRpcProvider, Network } from "@ethersproject/providers";
 import BigNumber from "bignumber.js";
 import { oraclePriceFeedABI } from "src/abis";
 import { OraclePriceFeed } from "src/abis/types/oraclePriceFeed";
@@ -6,12 +6,23 @@ import { Offer, OFFER_TYPE } from "src/types/offer";
 import { Price as P, Price } from "src/types/price";
 import { getContract } from "../utils";
 import { GetPriceTokenChainLink } from "../types/GetPriceTokens";
+import { CHAINS, ChainsID } from "../constants";
 
-export const getChainlinkPrice = (allowedToken: GetPriceTokenChainLink, rpcUrl: string) => {
+export const getChainlinkPrice = (allowedToken: GetPriceTokenChainLink, rpcUrl: string, chainId: number) => {
     return new Promise<Price>(async (resolve,reject) => {
       try{
+        // Create network object with explicit chainId to avoid auto-detection issues
+        const chain = CHAINS[chainId as ChainsID];
+        const network: Network = chain ? {
+          chainId,
+          name: chain.chainName,
+        } : {
+          chainId,
+          name: `Chain ${chainId}`,
+        };
 
-        const provider = new JsonRpcProvider(rpcUrl);
+        // Pass network explicitly to avoid "could not detect network" errors
+        const provider = new JsonRpcProvider(rpcUrl, network);
 
         const tokenAddress = allowedToken.contractAddress;
         const oracleContractAddress = allowedToken.priceFnc.contractAddress;

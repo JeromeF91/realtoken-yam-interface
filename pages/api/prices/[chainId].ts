@@ -97,7 +97,8 @@ const handler: NextApiHandler = async (
           if (getPriceType === 'chainlink') {
             const price = await getChainlinkPrice(
               token as GetPriceTokenChainLink,
-              rpcUrl
+              rpcUrl,
+              chainId
             );
             resolve(price);
           } else if (getPriceType === 'coingecko-api') {
