@@ -31,16 +31,23 @@ export const useUserOffers: UseUserOffers = () => {
             if (!chainId || !account || !properties || !prices || !wlProperties)
                 return OFFER_LOADING;
 
-            // Use RPC for user's own offers (much fewer requests)
-            const userOffers = await fetchUserOffersRpc(
-                account,
-                chainId,
-                properties,
-                wlProperties,
-                prices
-            );
+            try {
+                // Use RPC for user's own offers (much fewer requests)
+                const userOffers = await fetchUserOffersRpc(
+                    account,
+                    chainId,
+                    properties,
+                    wlProperties,
+                    prices
+                );
 
-            return userOffers;
+                return userOffers;
+            } catch (error: any) {
+                console.error('Error fetching user offers:', error);
+                // Return empty array instead of OFFER_LOADING to allow page to render
+                // This ensures the "Create Offer" tab still works even if fetching fails
+                return [];
+            }
         },
     });
 

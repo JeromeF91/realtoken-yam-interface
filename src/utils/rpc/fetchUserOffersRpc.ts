@@ -138,6 +138,17 @@ export const fetchUserOffersRpc = async (
       return [];
     }
 
+    // Limit the number of offers to fetch to prevent excessive RPC calls
+    // If user has too many offers, we'll only fetch the most recent ones
+    const MAX_OFFERS_TO_FETCH = 1000;
+    const offersToFetch = userOfferIds.length > MAX_OFFERS_TO_FETCH 
+      ? userOfferIds.slice(-MAX_OFFERS_TO_FETCH) // Get most recent offers
+      : userOfferIds;
+    
+    if (userOfferIds.length > MAX_OFFERS_TO_FETCH) {
+      console.warn(`User has ${userOfferIds.length} offers, limiting to ${MAX_OFFERS_TO_FETCH} most recent offers to prevent excessive RPC calls`);
+    }
+
     // Step 2: Fetch only the user's offers using multicall
     const offerDataArray: Array<{
       offerId: number;
@@ -153,8 +164,8 @@ export const fetchUserOffersRpc = async (
     const multicallBatchSize = 100;
     const offerResults: Array<{ offerId: number; success: boolean; data: any }> = [];
     
-    for (let i = 0; i < userOfferIds.length; i += multicallBatchSize) {
-      const batchIds = userOfferIds.slice(i, i + multicallBatchSize);
+    for (let i = 0; i < offersToFetch.length; i += multicallBatchSize) {
+      const batchIds = offersToFetch.slice(i, i + multicallBatchSize);
       
       try {
         const batchResults = await batchShowOffers(
@@ -182,7 +193,7 @@ export const fetchUserOffersRpc = async (
         });
       }
       
-      if (i + multicallBatchSize < userOfferIds.length) {
+      if (i + multicallBatchSize < offersToFetch.length) {
         await delay(50);
       }
     }

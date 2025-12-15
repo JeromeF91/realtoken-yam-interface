@@ -80,33 +80,44 @@ export const MarketTableUser: FC = () => {
         <Text size={'xl'}>
           {t('title')}
         </Text>
-        <TextInput 
-            placeholder={t('nameFilterPlaceholder')}
-            value={globalFilter}
-            onChange={(event) => setGlobalFilter(event.currentTarget.value)}
-        />
-        <MarketSort 
-          sellCount={sellCount}
-          buyCount={buyCount}
-          exchangeCount={exchangeCount}
-        />
+        {offers.length === 0 && !offersAreLoading && (
+          <Text c="dimmed" size="sm">
+            No offers found. You can create a new offer in the "Add Offer" tab.
+          </Text>
+        )}
+        {offers.length > 0 && (
+          <>
+            <TextInput 
+                placeholder={t('nameFilterPlaceholder')}
+                value={globalFilter}
+                onChange={(event) => setGlobalFilter(event.currentTarget.value)}
+            />
+            <MarketSort 
+              sellCount={sellCount}
+              buyCount={buyCount}
+              exchangeCount={exchangeCount}
+            />
+          </>
+        )}
       </Flex>
-      <Table
-        tableProps={{
-          highlightOnHover: true,
-          verticalSpacing: 'sm',
-          horizontalSpacing: 'xs',
-          style: (theme) => ({
-            border:theme.other.border(theme),
-            borderRadius: theme.radius[theme.defaultRadius as MantineSize],
-            borderCollapse: 'separate',
-            borderSpacing: 0,
-          }),
-        }}
-        table={table}
-        tablecaptionOptions={{ refreshState: [offersAreLoading, () => refetch()], visible: true }}
-        TableSubRow={MarketSubRow}
-      />
+      {offers.length > 0 && (
+        <Table
+          tableProps={{
+            highlightOnHover: true,
+            verticalSpacing: 'sm',
+            horizontalSpacing: 'xs',
+            style: (theme) => ({
+              border:theme.other.border(theme),
+              borderRadius: theme.radius[theme.defaultRadius as MantineSize],
+              borderCollapse: 'separate',
+              borderSpacing: 0,
+            }),
+          }}
+          table={table}
+          tablecaptionOptions={{ refreshState: [offersAreLoading, () => refetch()], visible: true }}
+          TableSubRow={MarketSubRow}
+        />
+      )}
     </Flex>
     
   );
