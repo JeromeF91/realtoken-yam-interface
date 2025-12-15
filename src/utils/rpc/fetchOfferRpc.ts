@@ -391,14 +391,14 @@ export const fetchOfferRpc = async (
         name: offerTokenName,
         symbol: offerTokenSymbol,
         decimals: offerTokenDecimals.toString(),
-        tokenType: offerTokenType.toNumber(),
+        tokenType: offerTokenType,
       },
       buyerToken: {
         address: buyerTokenAddress.toLowerCase(),
         name: buyerTokenName,
         symbol: buyerTokenSymbol,
         decimals: buyerTokenDecimals.toString(),
-        tokenType: buyerTokenType.toNumber(),
+        tokenType: buyerTokenType,
       },
       buyer: buyer !== '0x0000000000000000000000000000000000000000' ? {
         address: buyer.toLowerCase(),
@@ -474,10 +474,10 @@ export const fetchOfferRpc = async (
       availableAmount: amountBN.toString(), // Use the full amount from the contract - parseOffer will calculate the actual available amount
       // Always set balance and allowance for ERC20 tokens (type 2 or 3)
       // For type 1 (RealToken), parseOffer will use accountUserRealtoken instead
-      balance: offerTokenType.toNumber() !== 1 ? {
+      balance: offerTokenType !== 1 ? {
         amount: balanceAndAllowance.balance,
       } : null,
-      allowance: offerTokenType.toNumber() !== 1 ? {
+      allowance: offerTokenType !== 1 ? {
         allowance: balanceAndAllowance.allowance,
       } : null,
       createdAtTimestamp: 0, // TODO: Get from events if needed
