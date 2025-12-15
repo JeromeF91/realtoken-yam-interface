@@ -53,42 +53,62 @@ export const buy = async (
 
         const price = parseFloat(offer.price);
 
-        const amountInWei = new BigNumber(parseInt(new BigNumber(amount.toString()).shiftedBy(Number(offer.offerTokenDecimals)).toString()));
-        const priceInWei = new BigNumber(price.toString()).shiftedBy(Number(offer.buyerTokenDecimals));
+        // Note: offerToken and buyerToken are reversed in naming
+        // When buying: you're buying buyerToken (what seller offers), paying with offerToken (what you pay)
+        // amountInWei is how much buyerToken you're buying (what seller offers)
+        const amountInWei = new BigNumber(parseInt(new BigNumber(amount.toString()).shiftedBy(Number(offer.buyerTokenDecimals)).toString()));
+        // priceInWei is the price in offerToken (what you pay with)
+        const priceInWei = new BigNumber(price.toString()).shiftedBy(Number(offer.offerTokenDecimals));
 
         // console.log("amountInWei: ", amountInWei.toString())
         // console.log("priceInWei: ", priceInWei.toString())
 
-        const buyerToken = getContract<CoinBridgeToken>(
-            offer.buyerTokenAddress,
+        // When buying, you pay with offerToken, so we need to approve offerToken
+        const paymentToken = getContract<CoinBridgeToken>(
+            offer.offerTokenAddress,
             coinBridgeTokenABI,
             provider as Web3Provider,
             account
         );
 
-        if(!buyerToken){
-          console.error("buyerToken is undefined");
+        if(!paymentToken){
+          console.error("paymentToken (offerToken) is undefined");
           return;
         };
 
-        const buyerTokenAmount = new BigNumber(parseInt(amountInWei.multipliedBy(priceInWei).shiftedBy(-offer.offerTokenDecimals).toString()));
+        // paymentTokenAmount is how much offerToken you need to pay (what you pay with)
+        const paymentTokenAmount = new BigNumber(parseInt(amountInWei.multipliedBy(priceInWei).shiftedBy(-offer.buyerTokenDecimals).toString()));
         const transactionDeadline = Math.floor(Date.now() / 1000) + 3600; // permit valable during 1h
 
-        console.log("buyerTokenAmount: ", buyerTokenAmount.toString())
+        console.log("paymentTokenAmount (offerToken): ", paymentTokenAmount.toString())
 
         let approveNeeded = false;
         if(buyMethod == BUY_METHODS.buyWithApprove){
-          const allowance = await buyerToken.allowance(account, realTokenYamUpgradeable.address);
-          console.log("allowance: ", allowance.toString());
-          if(allowance.lt(buyerTokenAmount.toString(10))){
-            approveNeeded = true;
+          try {
+            // Use callStatic for read-only call and handle errors gracefully
+            const allowance = await paymentToken.callStatic.allowance(account, realTokenYamUpgradeable.address);
+            console.log("allowance: ", allowance.toString());
+            if(allowance.lt(paymentTokenAmount.toString(10))){
+              approveNeeded = true;
+            }
+          } catch (err: any) {
+            console.error('Error checking allowance in buy.ts:', err);
+            // If allowance call reverts, assume approval is needed
+            if (err?.code === 'CALL_EXCEPTION' || err?.message?.includes('revert')) {
+              console.warn('Token does not support allowance() function, assuming approval needed');
+              approveNeeded = true;
+            } else {
+              // For other errors, re-throw
+              throw err;
+            }
           }
         }
 
         console.log("approveNeeded: ", approveNeeded)
 
-        const buyerTokenType = await realTokenYamUpgradeable.getTokenType(
-          offer.buyerTokenAddress
+        // When buying, we need to check the token type of the payment token (offerToken)
+        const paymentTokenType = await realTokenYamUpgradeable.getTokenType(
+          offer.offerTokenAddress
         );
 
         if(
@@ -99,9 +119,9 @@ export const buy = async (
 
           if(approveNeeded){
             // TokenType = 3: ERC20 Without Permit, do Approve/buy
-            const approveTx = await buyerToken.approve(
+            const approveTx = await paymentToken.approve(
               realTokenYamUpgradeable.address,
-              buyerTokenAmount.toString(10)
+              paymentTokenAmount.toString(10)
             );
 
             const notificationApprove = {
@@ -161,15 +181,15 @@ export const buy = async (
             
 
         }else{
-          if (buyerTokenType === 1) {
+          if (paymentTokenType === 1) {
             // TokenType = 1: RealToken
   
             const { r, s, v }: any = await coinBridgeTokenPermitSignature(
               account,
               realTokenYamUpgradeable.address,
-              buyerTokenAmount.toString(),
+              paymentTokenAmount.toString(),
               transactionDeadline,
-              buyerToken,
+              paymentToken,
               provider
             );
   
@@ -204,14 +224,14 @@ export const buy = async (
                   ](notificationPayload)
                 )
               );
-          } else if (buyerTokenType === 2) {
+          } else if (paymentTokenType === 2) {
             // TokenType = 2: ERC20 With Permit
             const { r, s, v }: any = await erc20PermitSignature(
               account,
               realTokenYamUpgradeable.address,
-              buyerTokenAmount.toString(),
+              paymentTokenAmount.toString(),
               transactionDeadline,
-              buyerToken,
+              paymentToken,
               provider
             );
   
@@ -246,7 +266,7 @@ export const buy = async (
                   ](notificationPayload)
                 )
               );
-          } else if (buyerTokenType === 3) {
+          } else if (paymentTokenType === 3) {
 
             // TokenType = 3: ERC20 Without Permit, do Approve/buy
 
@@ -254,9 +274,9 @@ export const buy = async (
             if(approveNeeded){
 
 
-              const approveTx = await buyerToken.approve(
+              const approveTx = await paymentToken.approve(
                 realTokenYamUpgradeable.address,
-                buyerTokenAmount.toString()
+                paymentTokenAmount.toString()
               );
     
               const notificationApprove = {
