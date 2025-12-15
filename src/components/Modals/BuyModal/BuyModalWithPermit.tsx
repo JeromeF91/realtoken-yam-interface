@@ -29,6 +29,7 @@ import { BUY_METHODS, buy } from '../../../utils/tx/buy';
 import { Erc20, Erc20ABI } from '../../../abis';
 import { AvailableConnectors, ConnectorsDatas } from '@realtoken/realt-commons';
 import { useApproveOffer } from '../../../hooks/useApproveOffer';
+import { usePropertyToken } from 'src/hooks/usePropertyToken';
 
 type BuyModalWithPermitProps = {
   offer: Offer,
@@ -79,6 +80,12 @@ export const BuyModalWithPermit: FC<
   const [offerTokenSellerBalance,setOfferTokenSellerBalance] = useState<string|undefined>("");
   const { name:offerTokenName, symbol:offerTokenSymbol  } = useERC20TokenInfo(offer.offerTokenAddress);
   const { symbol:buyTokenSymbol, address:buyerTokenAddress } = useERC20TokenInfo(offer.buyerTokenAddress);
+  
+  // Get property token info for buyerToken (what you're buying)
+  const { propertyToken: buyerPropertyToken } = usePropertyToken(offer.buyerTokenAddress);
+  
+  // Use property token short name if available, otherwise fall back to symbol
+  const buyerTokenDisplayName = buyerPropertyToken?.shortName || buyTokenSymbol || offer.buyerTokenName;
   
   const realTokenYamUpgradeable = useContract(
     ContractsID.realTokenYamUpgradeable
@@ -224,7 +231,7 @@ export const BuyModalWithPermit: FC<
             <Text size={"xl"}>{t("summary")}</Text>
             <Text size={"md"} mb={10}>
               {/* When buying: you're buying buyerToken (property token), paying with offerToken (USDC) */}
-              {` ${t("summaryText1")} ${values?.amount} ${buyTokenSymbol} ${t("summaryText2")} ${cleanNumber(values?.price)} ${offerTokenSymbol} ${t("summaryText3")} ${total} ${offerTokenSymbol}`}
+              {` ${t("summaryText1")} ${values?.amount} ${buyerTokenDisplayName} ${t("summaryText2")} ${cleanNumber(values?.price)} ${offerTokenSymbol} ${t("summaryText3")} ${total} ${offerTokenSymbol}`}
             </Text>
             
             {values.amount > 0 ? (
