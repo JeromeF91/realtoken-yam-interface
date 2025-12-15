@@ -61,16 +61,19 @@ export const fetchPublicOffersRpc = async (
       return [];
     }
 
-    // Fetch the last 10 offers (most recent offer IDs)
-    // We'll check more than 10 to account for private offers that we'll filter out
-    const MAX_OFFERS_TO_CHECK = 50; // Check up to 50 offers to find 10 public ones
+    // Fetch offers to find 10 public offers that involve property tokens
+    // We need to check more offers because:
+    // 1. Some offers are private (have a buyer)
+    // 2. Some offers don't involve property tokens
+    // So we check more offers and filter down to 10 public property token offers
+    const MAX_OFFERS_TO_CHECK = 200; // Check up to 200 offers to find 10 public property token offers
     const startOfferId = Math.max(0, totalOffers - MAX_OFFERS_TO_CHECK);
     const offerIdsToCheck: number[] = [];
     for (let i = totalOffers - 1; i >= startOfferId; i--) {
       offerIdsToCheck.push(i);
     }
     
-    console.log(`Checking ${offerIdsToCheck.length} most recent offers to find 10 public offers`);
+    console.log(`Checking ${offerIdsToCheck.length} most recent offers to find 10 public property token offers`);
 
     // Fetch offers using multicall
     const offerDataArray: Array<{
@@ -179,19 +182,18 @@ export const fetchPublicOffersRpc = async (
       }
     });
 
-    // Limit to 10 offers (most recent public offers)
-    const publicOffersToProcess = offerDataArray.slice(0, 10);
-    
-    console.log(`Found ${publicOffersToProcess.length} public offers (limited to 10)`);
+    // Don't limit yet - we need to fetch token info first to filter for property tokens
+    // We'll limit to 10 after filtering for property tokens
+    console.log(`Found ${offerDataArray.length} public offers, will filter for property tokens next`);
 
-    if (publicOffersToProcess.length === 0) {
+    if (offerDataArray.length === 0) {
       return [];
     }
 
-    // Step 2: Fetch token info for unique tokens
+    // Step 2: Fetch token info for unique tokens from all public offers
     const tokenArray = Array.from(new Set([
-      ...publicOffersToProcess.map(o => o.offerTokenAddress),
-      ...publicOffersToProcess.map(o => o.buyerTokenAddress),
+      ...offerDataArray.map(o => o.offerTokenAddress),
+      ...offerDataArray.map(o => o.buyerTokenAddress),
     ]));
     
     const tokenInfoBatchSize = 10;
@@ -283,7 +285,27 @@ export const fetchPublicOffersRpc = async (
       }
     }
 
-    // Step 4: Collect unique account-token pairs for balance/allowance fetching
+    // Step 4: Filter offers for property tokens and limit to 10
+    const offersWithPropertyTokens = offerDataArray.filter(offerData => {
+      // Check if either offerToken or buyerToken is in the propertiesToken array
+      const hasPropertyToken = propertiesToken.find(
+        propertyToken => 
+          propertyToken.contractAddress.toLowerCase() === offerData.offerTokenAddress.toLowerCase() || 
+          propertyToken.contractAddress.toLowerCase() === offerData.buyerTokenAddress.toLowerCase()
+      );
+      return !!hasPropertyToken;
+    });
+
+    // Limit to 10 offers with property tokens
+    const publicOffersToProcess = offersWithPropertyTokens.slice(0, 10);
+    
+    console.log(`Found ${offersWithPropertyTokens.length} public offers with property tokens, limiting to ${publicOffersToProcess.length}`);
+
+    if (publicOffersToProcess.length === 0) {
+      return [];
+    }
+
+    // Step 5: Collect unique account-token pairs for balance/allowance fetching
     const uniqueAccountTokens = new Set<string>();
     publicOffersToProcess.forEach(offer => {
       const accountKey = `${offer.seller}-${offer.offerTokenAddress}`;
@@ -353,18 +375,7 @@ export const fetchPublicOffersRpc = async (
           continue;
         }
 
-        // Filter: Only include offers where at least one token is a property token
-        // Check if either offerToken or buyerToken is in the propertiesToken array
-        const hasPropertyToken = propertiesToken.find(
-          propertyToken => 
-            propertyToken.contractAddress.toLowerCase() === offerData.offerTokenAddress.toLowerCase() || 
-            propertyToken.contractAddress.toLowerCase() === offerData.buyerTokenAddress.toLowerCase()
-        );
-
-        if (!hasPropertyToken) {
-          // Skip offers that don't involve property tokens
-          continue;
-        }
+        // Note: Property token filtering is already done in Step 4, so all offers here have property tokens
 
         const offerTokenDecimals = tokenDecimalsCache.get(offerData.offerTokenAddress) || 18;
         const buyerTokenDecimals = tokenDecimalsCache.get(offerData.buyerTokenAddress) || 18;
