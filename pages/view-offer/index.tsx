@@ -261,9 +261,10 @@ const ViewOfferPage = () => {
       offerId: offer.offerId,
     });
     
-    // For now, check if sellerAddress matches
-    // If sellerAddress is wrong, we might need to check the raw contract return values
-    // But typically sellerAddress should be the wallet address
+    // Check if either seller or buyer matches the account
+    // The seller is the person who created the offer, so they can delete it
+    // For private offers, the buyer might also be able to delete, but typically only seller can delete
+    // Return true if seller matches (seller is the offer creator)
     return isSellerMatch;
   }, [offer, account]);
 
