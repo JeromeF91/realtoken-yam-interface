@@ -47,7 +47,7 @@ export const MarketTableUser: FC = () => {
       sorting, 
       pagination, 
       expanded,
-      globalFilter: globalFilter, 
+      globalFilter, 
       columnVisibility: {
         whitelisted: false
       } 
@@ -81,8 +81,8 @@ export const MarketTableUser: FC = () => {
           {t('title')}
         </Text>
         {offers.length === 0 && !offersAreLoading && (
-          <Text c="dimmed" size="sm">
-            No offers found. You can create a new offer in the "Add Offer" tab.
+          <Text c={'dimmed'} size={'sm'}>
+            No offers found. You can create a new offer in the &quot;Add Offer&quot; tab.
           </Text>
         )}
         {offers.length > 0 && (
