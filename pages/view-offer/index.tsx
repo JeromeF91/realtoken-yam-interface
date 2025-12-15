@@ -239,18 +239,16 @@ const ViewOfferPage = () => {
 
   const isAccountOffer = useMemo(() => {
     if (!offer || !account) {
-      console.log('isAccountOffer check:', { hasOffer: !!offer, hasAccount: !!account });
       return false;
     }
-    const sellerLower = offer.sellerAddress?.toLowerCase() || '';
-    const accountLower = account.toLowerCase();
-    const isMatch = sellerLower === accountLower;
-    console.log('isAccountOffer comparison:', {
+    // Match the pattern used in BuyActionsWithPermit
+    // sellerAddress might already be lowercase, so compare with account.toLowerCase()
+    const isMatch = offer.sellerAddress?.toLowerCase() === account.toLowerCase();
+    console.log('isAccountOffer check:', {
       sellerAddress: offer.sellerAddress,
-      sellerLower,
       account,
-      accountLower,
       isMatch,
+      offerId: offer.offerId,
     });
     return isMatch;
   }, [offer, account]);
@@ -453,7 +451,7 @@ const ViewOfferPage = () => {
                   <Divider />
 
                   <Flex justify="center" gap="md" direction="column" align="center">
-                    {isAccountOffer && (
+                    {isAccountOffer ? (
                       <Button
                         color="red"
                         variant="filled"
@@ -462,6 +460,10 @@ const ViewOfferPage = () => {
                       >
                         Delete Offer
                       </Button>
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        Seller: {offer.sellerAddress} | Your account: {account}
+                      </Text>
                     )}
                     <BuyActionsWithPermit
                       buyOffer={offer}
