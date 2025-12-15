@@ -48,12 +48,25 @@ export const useWlProperties: UseWlProperties = () => {
     
             const userIds = data[prefix]?.account?.userIds;
     
+            console.log('useWlProperties GraphQL response:', {
+                prefix,
+                account: account?.toLowerCase(),
+                data,
+                userIds,
+            });
+    
             let wlTokenIds: string[] | undefined = undefined;
-            if(userIds){
+            if(userIds && userIds.length > 0){
                 wlTokenIds = userIds[0].attributeKeys;
             }
 
-            return wlTokenIds ? wlTokenIds.map(str => parseInt(str)) : [];
+            const result = wlTokenIds ? wlTokenIds.map(str => parseInt(str)) : [];
+            console.log('useWlProperties parsed result:', {
+                wlTokenIds,
+                result,
+            });
+            
+            return result;
 
         }
     });
