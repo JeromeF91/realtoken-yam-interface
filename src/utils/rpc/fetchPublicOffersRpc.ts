@@ -269,8 +269,9 @@ export const fetchPublicOffersRpc = async (
         try {
           const info = await getTokenInfo(tokenAddress, provider);
           tokenDecimalsCache.set(tokenAddress, info.decimals);
-        } catch (error) {
-          console.error(`Error fetching decimals for ${tokenAddress}:`, error);
+        } catch (error: any) {
+          // Silently use default decimals if token doesn't support decimals() or isn't a valid ERC20
+          // This can happen if the address is not a token contract (e.g., seller/buyer address)
           const defaultValue = 18;
           tokenDecimalsCache.set(tokenAddress, defaultValue);
         }
