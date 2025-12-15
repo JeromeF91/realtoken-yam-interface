@@ -642,6 +642,22 @@ const ViewOfferPage = () => {
                         <Skeleton height={25} width={400} />
                       )}
                     </Flex>
+
+                    {offer.officialPrice !== undefined && offer.priceDelta !== undefined && (
+                      <Flex direction="column" gap={3}>
+                        <Text fw={700}>Price Difference</Text>
+                        <Flex direction="column" gap={2}>
+                          <Text c={offer.priceDelta > 0 ? "red" : offer.priceDelta < 0 ? "green" : "dimmed"}>
+                            {offer.priceDelta > 0 ? "+" : ""}{(offer.priceDelta * 100).toFixed(2)}%
+                          </Text>
+                          {offer.officialPrice && (
+                            <Text size="sm" c="dimmed">
+                              Official price: {offer.officialPrice.toFixed(2)} {offer.buyCurrency || 'USD'}
+                            </Text>
+                          )}
+                        </Flex>
+                      </Flex>
+                    )}
                   </Stack>
 
                   <Divider />
