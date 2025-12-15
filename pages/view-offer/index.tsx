@@ -376,14 +376,14 @@ const ViewOfferPage = () => {
                     <Flex direction="column" gap={3}>
                       <Text fw={700}>Seller Address</Text>
                       <Text style={{ fontFamily: 'monospace', fontSize: '0.9em' }}>
-                        {offer.buyerTokenAddress}
+                        {offer.sellerAddress}
                       </Text>
                     </Flex>
 
                     <Flex direction="column" gap={3}>
                       <Text fw={700}>Token Smart Contract</Text>
                       <Text style={{ fontFamily: 'monospace', fontSize: '0.9em' }}>
-                        {offer.sellerAddress}
+                        {offer.buyerTokenAddress}
                       </Text>
                     </Flex>
 
