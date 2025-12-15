@@ -17,14 +17,14 @@ export const fetchWalletRpc = async (
       CHAINS[chainId as ChainsID].contracts.realTokenYamUpgradeable;
 
     // Fetch balance and allowance in parallel
-    const [balance, allowance] = await Promise.all([
+    const [balanceStr, allowanceStr] = await Promise.all([
       getTokenBalance(offerTokenAddress, address, provider),
       getTokenAllowance(offerTokenAddress, address, realTokenYamUpgradeable, provider),
     ]);
 
     const account: Account = {
-      balance: balance,
-      allowance: allowance,
+      balance: parseFloat(balanceStr) || 0,
+      allowance: parseFloat(allowanceStr) || 0,
     };
 
     return account;
@@ -32,8 +32,8 @@ export const fetchWalletRpc = async (
     console.error('Error fetching wallet via RPC:', error);
     // Return zero values on error
     return {
-      balance: '0',
-      allowance: '0',
+      balance: 0,
+      allowance: 0,
     };
   }
 };

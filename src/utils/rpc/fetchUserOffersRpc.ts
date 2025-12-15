@@ -9,7 +9,7 @@ import { getRpcProvider, getTokenInfo } from './rpcHelpers';
 import { Offer } from '../../types/offer/Offer';
 import { PropertiesToken } from '../../types';
 import { Price } from '../../types/price';
-import { DataRealtokenType } from '../../types/offer/DataRealtokenType';
+import { DataRealtokenType } from '../../types/offer/DataRealTokenType';
 import { parseOffer } from '../offers/parseOffer';
 import { getExtendedTokens } from '../../constants/GetPriceToken';
 import { batchShowOffers } from './multicall';
@@ -298,6 +298,7 @@ export const fetchUserOffersRpc = async (
 
     // Step 6: Process offers with cached data
     const extendedTokensAddress = getExtendedTokens(chainId).map((token) => token.contractAddress);
+    const userOffers: Offer[] = [];
     
     for (const offerData of offerDataArray) {
       try {
@@ -320,10 +321,10 @@ export const fetchUserOffersRpc = async (
         
         if (offerTokenInfo.tokenType === 1 && accountUserRealtoken) {
           balance = accountUserRealtoken.amount;
-          allowance = accountUserRealtoken.allowance;
+          allowance = accountUserRealtoken.allowance ?? '0';
         } else if (accountUserRealtoken) {
           balance = accountUserRealtoken.amount;
-          allowance = accountUserRealtoken.allowance;
+          allowance = accountUserRealtoken.allowance ?? '0';
         }
 
         const availableAmount = BigNumber.minimum(
@@ -372,7 +373,7 @@ export const fetchUserOffersRpc = async (
         const parsedOffer = await parseOffer(
           account,
           offerGraphQl,
-          accountUserRealtoken,
+          accountUserRealtoken || { id: '', amount: '0', allowance: '0' },
           propertiesToken,
           wlProperties,
           prices,

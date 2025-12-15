@@ -141,7 +141,7 @@ export const getMultipleCache = async <T>(keys: string[]): Promise<Map<string, T
     
     const values = await client.mget(...keys);
     
-    values.forEach((value, index) => {
+    values.forEach((value: string | null, index: number) => {
       if (value) {
         try {
           result.set(keys[index], JSON.parse(value) as T);

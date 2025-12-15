@@ -438,7 +438,7 @@ export const fetchPublicOffersRpc = async (
         const parsedOffer = await parseOffer(
           account,
           offerGraphQl,
-          accountUserRealtoken,
+          accountUserRealtoken || { id: '', amount: '0', allowance: '0' },
           propertiesToken,
           wlProperties,
           prices,

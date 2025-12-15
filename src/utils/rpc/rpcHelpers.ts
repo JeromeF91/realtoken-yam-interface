@@ -101,7 +101,7 @@ export const getTokenInfo = async (
   });
   
   return {
-    decimals: typeof decimals === 'number' ? decimals : decimals.toNumber(),
+    decimals: typeof decimals === 'number' ? decimals : (decimals as any).toNumber(),
     name,
     symbol,
   };
