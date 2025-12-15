@@ -106,7 +106,7 @@ export const fetchPropertyByAddress = async (
 
       // Convert to PropertiesToken format
       const contractKey = getContractAddressKey(chainId);
-      const contractAddress = contractKey
+      let contractAddress = contractKey
         ? property.blockchainAddresses[contractKey]?.contract?.toLowerCase()
         : undefined;
 
