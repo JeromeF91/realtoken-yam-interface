@@ -175,8 +175,6 @@ export const fetchOfferRpc = async (
 
     // Get token info - try tokenInfo first, but fallback to ERC20 if it fails
     // This is critical - if tokenInfo fails, we should still be able to display the offer
-    let offerTokenInfo, buyerTokenInfo;
-    
     const getTokenInfoWithFallback = async (tokenAddress: string, tokenName: string) => {
       try {
         // Try tokenInfo first (works for whitelisted tokens)
