@@ -5,7 +5,25 @@ import { Offer, OFFER_LOADING, OFFER_TYPE } from "src/types/offer"
 
 const getTypedOffers = (type: OFFER_TYPE, offers: Offer[], offersLoading: boolean): Offer[] => {
     if (!offers || offersLoading) return OFFER_LOADING;
-    return offers.filter((offer: Offer) => offer.type == type);
+    // Use strict equality and handle both string and enum comparisons
+    const filtered = offers.filter((offer: Offer) => {
+        const offerType = offer.type;
+        const matches = offerType === type || offerType === type.toString();
+        if (!matches && offerType) {
+            // Debug: log mismatches for EXCHANGE type
+            if (type === OFFER_TYPE.EXCHANGE) {
+                console.log('EXCHANGE filter - offer type mismatch:', {
+                    offerId: offer.offerId,
+                    offerType,
+                    expectedType: type,
+                    offerTypeString: typeof offerType,
+                    expectedTypeString: typeof type,
+                });
+            }
+        }
+        return matches;
+    });
+    return filtered;
 }
 
 type UseTypedOffers = (offers: Offer[], offersAreLoading?: boolean) => {

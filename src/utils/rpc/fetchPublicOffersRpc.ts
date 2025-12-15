@@ -445,6 +445,12 @@ export const fetchPublicOffersRpc = async (
           extendedTokensAddress
         );
 
+        // Debug: log offer type
+        console.log(`Parsed offer ${parsedOffer.offerId} - type:`, parsedOffer.type, {
+          offerTokenType: parsedOffer.offerTokenType,
+          buyerTokenType: parsedOffer.buyerTokenType,
+        });
+
         publicOffers.push(parsedOffer);
       } catch (error) {
         console.error(`Error parsing offer ${offerData.offerId}:`, error);
