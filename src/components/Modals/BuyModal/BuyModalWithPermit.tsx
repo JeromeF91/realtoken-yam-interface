@@ -83,22 +83,27 @@ export const BuyModalWithPermit: FC<
   const { name:offerTokenName, symbol:offerTokenSymbol  } = useERC20TokenInfo(offer.offerTokenAddress);
   const { symbol:buyTokenSymbol, address:buyerTokenAddress } = useERC20TokenInfo(offer.buyerTokenAddress);
   
-  // Get the correct property token address using the utility function
-  // This handles the logic for BUY vs SELL offer types
-  const propertyTokenAddress = getPropertyTokenAddress(offer);
-  
-  // Get property token info using the correct address
-  const { propertyToken: buyerPropertyToken } = usePropertyToken(propertyTokenAddress);
+  // Get property token info - when buying, we're buying the buyerToken (property token)
+  // The property token contract address is in buyerTokenAddress (what you're buying)
+  // NOT in sellerAddress (which is the seller's wallet address)
+  // Try buyerTokenAddress first (what you're buying), then offerTokenAddress as fallback
+  const { propertyToken: buyerPropertyTokenFromBuyerToken } = usePropertyToken(offer.buyerTokenAddress);
+  const { propertyToken: buyerPropertyTokenFromOfferToken } = usePropertyToken(offer.offerTokenAddress);
   const { propertiesIsloading } = usePropertiesToken();
+  
+  // Use the property token from buyerTokenAddress (what you're buying) if found,
+  // otherwise try offerTokenAddress
+  const buyerPropertyToken = buyerPropertyTokenFromBuyerToken || buyerPropertyTokenFromOfferToken;
   
   console.log('BuyModal: Property token lookup:', {
     offerType: offer.type,
-    propertyTokenAddress,
     buyerTokenAddress: offer.buyerTokenAddress,
     offerTokenAddress: offer.offerTokenAddress,
     sellerAddress: offer.sellerAddress,
-    foundPropertyToken: !!buyerPropertyToken,
+    foundFromBuyerToken: !!buyerPropertyTokenFromBuyerToken,
+    foundFromOfferToken: !!buyerPropertyTokenFromOfferToken,
     propertyTokenShortName: buyerPropertyToken?.shortName,
+    propertyTokenContractAddress: buyerPropertyToken?.contractAddress,
   });
   
   // Use property token short name if available, otherwise fall back to symbol
