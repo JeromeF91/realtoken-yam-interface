@@ -30,6 +30,7 @@ import { useWlProperties } from 'src/hooks/interface/useWlProperties';
 import { Offer } from 'src/types/offer/Offer';
 import { OFFER_TYPE } from 'src/types/offer/OfferType';
 import { getPriceInDollar } from 'src/utils/price';
+import { getNotWhitelistedTokens } from 'src/utils/whitelist';
 import { PropertyCard } from 'src/components/Offer/PropertyCard/PropertyCard';
 import { BuyActionsWithPermit } from 'src/components/Market/BuyActions/BuyActionsWithPermit';
 import { OfferText } from 'src/components/Offer/OfferText';
