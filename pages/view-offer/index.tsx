@@ -494,15 +494,11 @@ const ViewOfferPage = () => {
                         (() => {
                           // Check if buyerToken is USDC (or USD-pegged stablecoin)
                           const isBuyerTokenUSD = offer.buyerTokenName?.toUpperCase().includes('USDC') || 
-                                                  offer.buyerTokenName?.toUpperCase().includes('USD') ||
-                                                  offer.buyerTokenSymbol?.toUpperCase().includes('USDC') ||
-                                                  offer.buyerTokenSymbol?.toUpperCase().includes('USD');
+                                                  offer.buyerTokenName?.toUpperCase().includes('USD');
                           
                           // Check if offerToken is USDC
                           const isOfferTokenUSD = offer.offerTokenName?.toUpperCase().includes('USDC') || 
-                                                  offer.offerTokenName?.toUpperCase().includes('USD') ||
-                                                  offer.offerTokenSymbol?.toUpperCase().includes('USDC') ||
-                                                  offer.offerTokenSymbol?.toUpperCase().includes('USD');
+                                                  offer.offerTokenName?.toUpperCase().includes('USD');
                           
                           const priceBN = new BigNumber(offer.price);
                           
