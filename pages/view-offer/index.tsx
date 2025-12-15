@@ -33,10 +33,7 @@ import { BuyActionsWithPermit } from 'src/components/Market/BuyActions/BuyAction
 import { OfferText } from 'src/components/Offer/OfferText';
 import { fetchPropertyByAddress } from 'src/utils/api/fetchPropertyByAddress';
 import { PropertiesToken } from 'src/types/PropertiesToken';
-import { DeleteActions } from 'src/components/Market/DeleteActions/DeleteActions';
 import { useModals } from '@mantine/modals';
-import { Title } from '@mantine/core';
-import { useTranslation } from 'react-i18next';
 
 // Cache chainId to avoid repeated RPC calls
 let cachedChainId: number | undefined = undefined;
