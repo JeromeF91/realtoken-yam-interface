@@ -31,7 +31,7 @@ import { Offer } from 'src/types/offer/Offer';
 import { PropertyCard } from 'src/components/Offer/PropertyCard/PropertyCard';
 import { BuyActionsWithPermit } from 'src/components/Market/BuyActions/BuyActionsWithPermit';
 import { OfferText } from 'src/components/Offer/OfferText';
-import { fetchPropertyByAddress } from 'src/utils/api/fetchPropertyByAddress';
+// Removed client-side fetchPropertyByAddress - now using server-side API
 import { PropertiesToken } from 'src/types/PropertiesToken';
 import { useModals } from '@mantine/modals';
 
@@ -135,12 +135,17 @@ const ViewOfferPage = () => {
             if (token) {
               fetchedPropertyTokens.push(token);
             } else {
-              // If not found locally, try fetching from API using the address
+              // If not found locally, try fetching from server-side API using the address
               console.log(`Property not found locally for buyerToken ${fetchedOffer.buyerTokenAddress}, fetching from API...`);
-              const apiToken = await fetchPropertyByAddress(fetchedOffer.buyerTokenAddress, effectiveChainId);
-              if (apiToken) {
-                fetchedPropertyTokens.push(apiToken);
-                console.log(`Fetched property from API: ${apiToken.shortName}`);
+              try {
+                const response = await fetch(`/api/property/${effectiveChainId}/${fetchedOffer.buyerTokenAddress}`);
+                if (response.ok) {
+                  const apiToken = await response.json();
+                  fetchedPropertyTokens.push(apiToken);
+                  console.log(`Fetched property from API: ${apiToken.shortName}`);
+                }
+              } catch (error) {
+                console.warn(`Failed to fetch property from API for buyerToken ${fetchedOffer.buyerTokenAddress}:`, error);
               }
             }
           }
@@ -150,12 +155,17 @@ const ViewOfferPage = () => {
             if (token) {
               fetchedPropertyTokens.push(token);
             } else {
-              // If not found locally, try fetching from API using the address
+              // If not found locally, try fetching from server-side API using the address
               console.log(`Property not found locally for offerToken ${fetchedOffer.offerTokenAddress}, fetching from API...`);
-              const apiToken = await fetchPropertyByAddress(fetchedOffer.offerTokenAddress, effectiveChainId);
-              if (apiToken) {
-                fetchedPropertyTokens.push(apiToken);
-                console.log(`Fetched property from API: ${apiToken.shortName}`);
+              try {
+                const response = await fetch(`/api/property/${effectiveChainId}/${fetchedOffer.offerTokenAddress}`);
+                if (response.ok) {
+                  const apiToken = await response.json();
+                  fetchedPropertyTokens.push(apiToken);
+                  console.log(`Fetched property from API: ${apiToken.shortName}`);
+                }
+              } catch (error) {
+                console.warn(`Failed to fetch property from API for offerToken ${fetchedOffer.offerTokenAddress}:`, error);
               }
             }
           }
@@ -171,18 +181,25 @@ const ViewOfferPage = () => {
                 console.log(`Found property in cache using seller address: ${tokenBySeller.shortName}`);
               }
             } else {
-              // Try fetching from API using the seller address (token contract address)
+              // Try fetching from server-side API using the seller address (token contract address)
               console.log(`Trying to fetch property from API using seller address (token UUID): ${fetchedOffer.sellerAddress}`);
-              const apiToken = await fetchPropertyByAddress(fetchedOffer.sellerAddress, effectiveChainId);
-              if (apiToken && !fetchedPropertyTokens.find(t => t.contractAddress === apiToken.contractAddress)) {
-                fetchedPropertyTokens.push(apiToken);
-                console.log(`Fetched property from API using seller address: ${apiToken.shortName}`, {
-                  annualYield: apiToken.annualYield,
-                  officialPrice: apiToken.officialPrice,
-                  currency: apiToken.currency,
-                });
-              } else {
-                console.warn(`Could not fetch property from API for address: ${fetchedOffer.sellerAddress}`);
+              try {
+                const response = await fetch(`/api/property/${effectiveChainId}/${fetchedOffer.sellerAddress}`);
+                if (response.ok) {
+                  const apiToken = await response.json();
+                  if (!fetchedPropertyTokens.find(t => t.contractAddress === apiToken.contractAddress)) {
+                    fetchedPropertyTokens.push(apiToken);
+                    console.log(`Fetched property from API using seller address: ${apiToken.shortName}`, {
+                      annualYield: apiToken.annualYield,
+                      officialPrice: apiToken.officialPrice,
+                      currency: apiToken.currency,
+                    });
+                  }
+                } else {
+                  console.warn(`Could not fetch property from API for address: ${fetchedOffer.sellerAddress}`);
+                }
+              } catch (error) {
+                console.warn(`Failed to fetch property from API for seller address ${fetchedOffer.sellerAddress}:`, error);
               }
             }
           }
