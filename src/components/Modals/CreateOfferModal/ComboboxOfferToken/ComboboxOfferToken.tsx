@@ -81,39 +81,49 @@ export const ComboboxOfferToken = ({
 
   const { t } = useTranslation('modals', { keyPrefix: 'sell' });
 
-  const combobox = useCombobox({
-    onDropdownClose: () => combobox.resetSelectedOption(),
-  });
 
   const {
     userBalances: realTokenUserBalances,
     userBalancesAreLoading: realTokenUserBalancesAreLoading,
   } = useUserBalance();
 
-  const [assetsBalances, setAssetsBalances] = useState<any>([]);
+  const [assetsBalances, setAssetsBalances] = useState<any>({});
   const [assetsBalancesAreLoading, setAssetsBalancesAreLoading] =
-    useState<boolean>(true);
+    useState<boolean>(false);
+  const [hasFetchedBalances, setHasFetchedBalances] = useState<boolean>(false);
+  
   const fetchBalances = async () => {
+    // Don't fetch if already fetched or if no data
+    if (hasFetchedBalances || !data || data.length === 0) {
+      return;
+    }
+    
     try {
       setAssetsBalancesAreLoading(true);
 
       const assetsBalance = await Promise.all(
         data.map(async (item) => {
-          if (!provider) return {};
-          const contract = getContract<Erc20>(
-            item.value ?? '',
-            Erc20ABI,
-            provider,
-            account
-          );
-          if (!contract || !account) return {};
-          const decimals = new BigNumber(
-            (await contract.decimals()).toString()
-          );
-          const balance = new BigNumber(
-            (await contract.balanceOf(account)).toString()
-          ).shiftedBy(-decimals.toNumber());
-          return { [item.value.toLowerCase()]: balance };
+          if (!provider || !account || !item.value) return {};
+          try {
+            const contract = getContract<Erc20>(
+              item.value ?? '',
+              Erc20ABI,
+              provider,
+              account
+            );
+            if (!contract) return {};
+            // Use callStatic for read-only calls
+            const decimals = new BigNumber(
+              (await contract.callStatic.decimals()).toString()
+            );
+            const balance = new BigNumber(
+              (await contract.callStatic.balanceOf(account)).toString()
+            ).shiftedBy(-decimals.toNumber());
+            return { [item.value.toLowerCase()]: balance };
+          } catch (err) {
+            // Silently handle errors for individual tokens
+            return {};
+          }
         })
       );
 
@@ -125,17 +135,24 @@ export const ComboboxOfferToken = ({
       });
 
       setAssetsBalances(assets);
+      setHasFetchedBalances(true);
       setAssetsBalancesAreLoading(false);
     } catch (err) {
       console.error(err);
+      setAssetsBalancesAreLoading(false);
     }
   };
-  useEffect(() => {
-    console.log(type);
-    if (type == 'others') {
-      fetchBalances();
-    }
-  }, [type]);
+  
+  // Only fetch balances when dropdown is opened, not on mount
+  const combobox = useCombobox({
+    onDropdownClose: () => combobox.resetSelectedOption(),
+    onDropdownOpen: () => {
+      // Fetch balances when dropdown opens (lazy loading)
+      if (type === 'others' && !hasFetchedBalances) {
+        fetchBalances();
+      }
+    },
+  });
 
   const [userBalances, userBalancesAreLoading] = useMemo(() => {
     if (type == 'realtoken') {

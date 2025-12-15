@@ -23,7 +23,12 @@ export const OfferModalWrapper: React.FC<ComponentProps> = ({ offer, form, token
     const { t } = useTranslation('modals', { keyPrefix: 'createOffer' });
 
     const { offerTokenSymbol, shieldError, onSubmit, isLoading, isModification } = useCreateOfferContext();
-    const { bigNumberbalance, balance } = useWalletERC20Balance(values.offerTokenAddress);
+    // Only fetch balance when a token address is selected
+    const { bigNumberbalance, balance } = useWalletERC20Balance(
+      values.offerTokenAddress && values.offerTokenAddress !== '' 
+        ? values.offerTokenAddress 
+        : undefined
+    );
 
     return (
         <Flex direction={"column"} mx={'auto'} gap={"md"} style={{ padding: '1rem' }}>
