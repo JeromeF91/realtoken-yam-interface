@@ -28,6 +28,7 @@ import { usePropertiesToken } from 'src/hooks/usePropertiesToken';
 import { usePrices } from 'src/hooks/interface/usePrices';
 import { useWlProperties } from 'src/hooks/interface/useWlProperties';
 import { Offer } from 'src/types/offer/Offer';
+import { OFFER_TYPE } from 'src/types/offer/OfferType';
 import { PropertyCard } from 'src/components/Offer/PropertyCard/PropertyCard';
 import { BuyActionsWithPermit } from 'src/components/Market/BuyActions/BuyActionsWithPermit';
 import { OfferText } from 'src/components/Offer/OfferText';
@@ -643,21 +644,75 @@ const ViewOfferPage = () => {
                       )}
                     </Flex>
 
-                    {offer.officialPrice !== undefined && offer.priceDelta !== undefined && (
-                      <Flex direction="column" gap={3}>
-                        <Text fw={700}>Price Difference</Text>
-                        <Flex direction="column" gap={2}>
-                          <Text c={offer.priceDelta > 0 ? "red" : offer.priceDelta < 0 ? "green" : "dimmed"}>
-                            {offer.priceDelta > 0 ? "+" : ""}{(offer.priceDelta * 100).toFixed(2)}%
-                          </Text>
-                          {offer.officialPrice && (
-                            <Text size="sm" c="dimmed">
-                              Official price: {offer.officialPrice.toFixed(2)} {offer.buyCurrency || 'USD'}
-                            </Text>
-                          )}
-                        </Flex>
-                      </Flex>
-                    )}
+                    {(() => {
+                      // Debug: log priceDelta and officialPrice
+                      console.log('Price difference debug:', {
+                        priceDelta: offer.priceDelta,
+                        officialPrice: offer.officialPrice,
+                        offerPrice: offer.offerPrice,
+                        price: offer.price,
+                        type: offer.type,
+                        buyCurrency: offer.buyCurrency,
+                      });
+
+                      // Try to calculate priceDelta if not available
+                      let priceDelta = offer.priceDelta;
+                      let officialPrice = offer.officialPrice;
+
+                      // If priceDelta is not available but we have officialPrice and offerPrice, calculate it
+                      if (priceDelta === undefined && officialPrice !== undefined && offer.offerPrice !== undefined) {
+                        if (offer.type === OFFER_TYPE.SELL) {
+                          // For SELL offers: priceDelta = (offerPrice / officialPrice) - 1
+                          priceDelta = (offer.offerPrice / officialPrice) - 1;
+                        } else if (offer.type === OFFER_TYPE.BUY) {
+                          // For BUY offers: priceDelta = (1/price - officialPrice) / officialPrice
+                          const tokenInDollar = 1 / parseFloat(offer.price);
+                          priceDelta = (tokenInDollar - officialPrice) / officialPrice;
+                        }
+                      }
+
+                      // Also try to get officialPrice from propertyTokens if not available
+                      if (officialPrice === undefined && propertyTokens.length > 0) {
+                        const propertyToken = propertyTokens.find(
+                          t => t.contractAddress?.toLowerCase() === 
+                            (offer.type === OFFER_TYPE.BUY
+                              ? offer.buyerTokenAddress?.toLowerCase() 
+                              : offer.offerTokenAddress?.toLowerCase())
+                        );
+                        if (propertyToken?.officialPrice) {
+                          officialPrice = propertyToken.officialPrice;
+                          // Recalculate priceDelta if we now have officialPrice
+                          if (priceDelta === undefined && offer.offerPrice !== undefined && officialPrice !== undefined) {
+                            if (offer.type === OFFER_TYPE.SELL) {
+                              priceDelta = (offer.offerPrice / officialPrice) - 1;
+                            } else if (offer.type === OFFER_TYPE.BUY) {
+                              const tokenInDollar = 1 / parseFloat(offer.price);
+                              priceDelta = (tokenInDollar - officialPrice) / officialPrice;
+                            }
+                          }
+                        }
+                      }
+
+                      // Only show if we have both values
+                      if (officialPrice !== undefined && priceDelta !== undefined) {
+                        return (
+                          <Flex direction="column" gap={3}>
+                            <Text fw={700}>Price Difference</Text>
+                            <Flex direction="column" gap={2}>
+                              <Text c={priceDelta > 0 ? "red" : priceDelta < 0 ? "green" : "dimmed"}>
+                                {priceDelta > 0 ? "+" : ""}{(priceDelta * 100).toFixed(2)}%
+                              </Text>
+                              {officialPrice && (
+                                <Text size="sm" c="dimmed">
+                                  Official price: {officialPrice.toFixed(2)} {offer.buyCurrency || 'USD'}
+                                </Text>
+                              )}
+                            </Flex>
+                          </Flex>
+                        );
+                      }
+                      return null;
+                    })()}
                   </Stack>
 
                   <Divider />
