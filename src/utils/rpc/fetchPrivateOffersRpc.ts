@@ -217,8 +217,16 @@ export const fetchPrivateOffersRpc = async (
               return;
             }
 
-            const [offerTokenType, offerTokenName, offerTokenSymbol] = offerTokenInfo;
-            const [buyerTokenType, buyerTokenName, buyerTokenSymbol] = buyerTokenInfo;
+            const [offerTokenTypeRaw, offerTokenName, offerTokenSymbol] = offerTokenInfo;
+            const [buyerTokenTypeRaw, buyerTokenName, buyerTokenSymbol] = buyerTokenInfo;
+            
+            // Helper to safely convert tokenType to number
+            const getTokenTypeNumber = (tokenType: any): number => {
+              return typeof tokenType === 'number' ? tokenType : (tokenType?.toNumber ? tokenType.toNumber() : 3);
+            };
+            
+            const offerTokenType = getTokenTypeNumber(offerTokenTypeRaw);
+            const buyerTokenType = getTokenTypeNumber(buyerTokenTypeRaw);
 
             const [offerTokenDecimals, buyerTokenDecimals] = await Promise.all([
               getTokenInfo(offerTokenAddress, provider)
@@ -258,14 +266,14 @@ export const fetchPrivateOffersRpc = async (
                 name: offerTokenName,
                 symbol: offerTokenSymbol,
                 decimals: offerTokenDecimals.toString(),
-                tokenType: offerTokenType.toNumber(),
+                tokenType: offerTokenType,
               },
               buyerToken: {
                 address: buyerTokenAddress.toLowerCase(),
                 name: buyerTokenName,
                 symbol: buyerTokenSymbol,
                 decimals: buyerTokenDecimals.toString(),
-                tokenType: buyerTokenType.toNumber(),
+                tokenType: buyerTokenType,
               },
               buyer: buyer !== '0x0000000000000000000000000000000000000000' ? {
                 address: buyer.toLowerCase(),
@@ -279,10 +287,10 @@ export const fetchPrivateOffersRpc = async (
                 amount: amountBN.toString(),
               },
               availableAmount: amountBN.toString(),
-              balance: offerTokenType.toNumber() !== 1 ? {
+              balance: offerTokenType !== 1 ? {
                 amount: balanceAndAllowance.balance,
               } : null,
-              allowance: offerTokenType.toNumber() !== 1 ? {
+              allowance: offerTokenType !== 1 ? {
                 allowance: balanceAndAllowance.allowance,
               } : null,
               createdAtTimestamp: 0,
