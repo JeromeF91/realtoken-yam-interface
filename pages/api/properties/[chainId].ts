@@ -6,37 +6,130 @@ import { APIPropertiesToken, PropertiesToken, ShortProperty } from 'src/types';
 
 import { ChainsID } from '../../../src/constants';
 
-const getTokenFromCommunityAPI = new Promise<APIPropertiesToken[]>(
-  async (resolve, reject) => {
-    try {
-      const apiKey = process.env.COMMUNITY_API_KEY ?? '';
-      if (!apiKey) {
-        console.warn('COMMUNITY_API_KEY is not set. API requests may fail.');
-      }
-      
-      const response = await axios.get<APIPropertiesToken[]>(
-        'https://api.realtoken.community/v1/token',
-        {
-          headers: {
-            'X-AUTH-REALT-TOKEN': apiKey,
-          },
-        }
-      );
+/**
+ * In-memory cache for community API tokens
+ * Value: { data: APIPropertiesToken[], timestamp: number }
+ */
+interface CommunityTokensCacheEntry {
+  data: APIPropertiesToken[];
+  timestamp: number;
+}
 
-      const tokens: APIPropertiesToken[] = response.data;
-      console.log(`Fetched ${tokens.length} properties from RealToken Community API`);
-      resolve(tokens);
-    } catch (err: any) {
-      console.error('Failed to fetch properties from community API:', {
-        message: err?.message,
-        status: err?.response?.status,
-        statusText: err?.response?.statusText,
-        data: err?.response?.data,
-      });
-      reject(err);
-    }
+/**
+ * In-memory cache for processed properties per chainId
+ * Key: chainId
+ * Value: { data: PropertiesToken[], timestamp: number }
+ */
+interface PropertiesCacheEntry {
+  data: PropertiesToken[];
+  timestamp: number;
+}
+
+let communityTokensCache: CommunityTokensCacheEntry | null = null;
+const propertiesCache = new Map<number, PropertiesCacheEntry>();
+
+/**
+ * Cache TTL: 20 minutes (1200 seconds, matches HTTP cache)
+ */
+const CACHE_TTL = 20 * 60 * 1000;
+
+/**
+ * Get cached community tokens if available and not expired
+ */
+const getCachedCommunityTokens = (): APIPropertiesToken[] | null => {
+  if (!communityTokensCache) {
+    return null;
   }
-);
+  
+  const now = Date.now();
+  if (now - communityTokensCache.timestamp > CACHE_TTL) {
+    // Cache expired, remove it
+    communityTokensCache = null;
+    return null;
+  }
+  
+  return communityTokensCache.data;
+};
+
+/**
+ * Set cached community tokens with timestamp
+ */
+const setCachedCommunityTokens = (data: APIPropertiesToken[]): void => {
+  communityTokensCache = {
+    data,
+    timestamp: Date.now(),
+  };
+};
+
+/**
+ * Get cached properties for a chainId if available and not expired
+ */
+const getCachedProperties = (chainId: number): PropertiesToken[] | null => {
+  const entry = propertiesCache.get(chainId);
+  if (!entry) {
+    return null;
+  }
+  
+  const now = Date.now();
+  if (now - entry.timestamp > CACHE_TTL) {
+    // Cache expired, remove it
+    propertiesCache.delete(chainId);
+    return null;
+  }
+  
+  return entry.data;
+};
+
+/**
+ * Set cached properties for a chainId with timestamp
+ */
+const setCachedProperties = (chainId: number, data: PropertiesToken[]): void => {
+  propertiesCache.set(chainId, {
+    data,
+    timestamp: Date.now(),
+  });
+};
+
+const getTokenFromCommunityAPI = async (): Promise<APIPropertiesToken[]> => {
+  // Check cache first
+  const cached = getCachedCommunityTokens();
+  if (cached) {
+    console.log(`Using cached properties from RealToken Community API (${cached.length} tokens)`);
+    return cached;
+  }
+
+  try {
+    const apiKey = process.env.COMMUNITY_API_KEY ?? '';
+    if (!apiKey) {
+      console.warn('COMMUNITY_API_KEY is not set. API requests may fail.');
+    }
+    
+    const response = await axios.get<APIPropertiesToken[]>(
+      'https://api.realtoken.community/v1/token',
+      {
+        headers: {
+          'X-AUTH-REALT-TOKEN': apiKey,
+        },
+      }
+    );
+
+    const tokens: APIPropertiesToken[] = response.data;
+    console.log(`Fetched ${tokens.length} properties from RealToken Community API`);
+    
+    // Cache the result
+    setCachedCommunityTokens(tokens);
+    
+    return tokens;
+  } catch (err: any) {
+    console.error('Failed to fetch properties from community API:', {
+      message: err?.message,
+      status: err?.response?.status,
+      statusText: err?.response?.statusText,
+      data: err?.response?.data,
+    });
+    throw err;
+  }
+};
 
 const getContractAddressFromChainId = (chainId: number): string | undefined => {
   let addressKey;
@@ -153,9 +246,26 @@ const handler: NextApiHandler = async (
       return res.status(400).json({ error: 'ChainId is missing.' });
     }
 
+    const chainIdNum = parseInt(chainId);
+
+    // Check cache for processed properties first
+    const cachedProperties = getCachedProperties(chainIdNum);
+    if (cachedProperties) {
+      return res
+        .setHeader(
+          'cache-control',
+          'public, s-maxage=1200, stale-while-revalidate=600'
+        )
+        .status(200)
+        .json(cachedProperties);
+    }
+
     // const [communityApiToken,wlTokens] = await Promise.all([getTokenFromCommunityAPI,getWhitelistedProperties(parseInt(chainId))]);
-    const [communityApiToken] = await Promise.all([getTokenFromCommunityAPI]);
-    const tokens = await getTokens(parseInt(chainId), communityApiToken, []);
+    const [communityApiToken] = await Promise.all([getTokenFromCommunityAPI()]);
+    const tokens = await getTokens(chainIdNum, communityApiToken, []);
+
+    // Cache the processed tokens
+    setCachedProperties(chainIdNum, tokens);
 
     // const extendedTokens = tokenToGetPrice.get(parseInt(chainId))?.filter(token => !token.isBuyToken) ?? [] as PropertiesToken[];
     // console.log(extendedTokens);
