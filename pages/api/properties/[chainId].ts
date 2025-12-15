@@ -29,9 +29,9 @@ let communityTokensCache: CommunityTokensCacheEntry | null = null;
 const propertiesCache = new Map<number, PropertiesCacheEntry>();
 
 /**
- * Cache TTL: 20 minutes (1200 seconds, matches HTTP cache)
+ * Cache TTL: 60 minutes (3600 seconds, matches HTTP cache)
  */
-const CACHE_TTL = 20 * 60 * 1000;
+const CACHE_TTL = 60 * 60 * 1000;
 
 /**
  * Get cached community tokens if available and not expired
@@ -251,13 +251,13 @@ const handler: NextApiHandler = async (
     // Check cache for processed properties first
     const cachedProperties = getCachedProperties(chainIdNum);
     if (cachedProperties) {
-      return res
-        .setHeader(
-          'cache-control',
-          'public, s-maxage=1200, stale-while-revalidate=600'
-        )
-        .status(200)
-        .json(cachedProperties);
+    return res
+      .setHeader(
+        'cache-control',
+        'public, s-maxage=3600, stale-while-revalidate=1800'
+      )
+      .status(200)
+      .json(cachedProperties);
     }
 
     // const [communityApiToken,wlTokens] = await Promise.all([getTokenFromCommunityAPI,getWhitelistedProperties(parseInt(chainId))]);
@@ -273,7 +273,7 @@ const handler: NextApiHandler = async (
     return res
       .setHeader(
         'cache-control',
-        'public, s-maxage=1200, stale-while-revalidate=600'
+        'public, s-maxage=3600, stale-while-revalidate=1800'
       )
       .status(200)
       .json(tokens);
