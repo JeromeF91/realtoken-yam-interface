@@ -223,8 +223,8 @@ export const BuyModalWithPermit: FC<
 
             <Text size={"xl"}>{t("summary")}</Text>
             <Text size={"md"} mb={10}>
-              {/* When buying, you pay with offerToken, so price should be shown in offerToken */}
-              {` ${t("summaryText1")} ${values?.amount} ${offerTokenSymbol} ${t("summaryText2")} ${cleanNumber(values?.price)} ${offerTokenSymbol} ${t("summaryText3")} ${total} ${offerTokenSymbol}`}
+              {/* When buying: you're buying buyerToken (property token), paying with offerToken (USDC) */}
+              {` ${t("summaryText1")} ${values?.amount} ${buyTokenSymbol} ${t("summaryText2")} ${cleanNumber(values?.price)} ${offerTokenSymbol} ${t("summaryText3")} ${total} ${offerTokenSymbol}`}
             </Text>
             
             {values.amount > 0 ? (
