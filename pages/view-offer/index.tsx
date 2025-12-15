@@ -714,23 +714,33 @@ const ViewOfferPage = () => {
                           
                           let offerPriceInDollar: number | undefined;
                           
-                          if (isBuyerTokenProperty) {
+                          // Get USD prices for both tokens from the prices API
+                          const buyerTokenPriceUSD = prices[offer.buyerTokenAddress?.toLowerCase()] 
+                            ? parseFloat(prices[offer.buyerTokenAddress?.toLowerCase()] || '0')
+                            : undefined;
+                          const offerTokenPriceUSD = prices[offer.offerTokenAddress?.toLowerCase()] 
+                            ? parseFloat(prices[offer.offerTokenAddress?.toLowerCase()] || '0')
+                            : undefined;
+                          
+                          console.log('EXCHANGE price calculation:', {
+                            isBuyerTokenProperty,
+                            isOfferTokenProperty,
+                            buyerTokenPriceUSD,
+                            offerTokenPriceUSD,
+                            price: offer.price,
+                            officialPrice,
+                          });
+                          
+                          if (isBuyerTokenProperty && offerTokenPriceUSD !== undefined && offerTokenPriceUSD > 0) {
                             // Property token is buyerToken
-                            // Get the price of offerToken from prices
-                            const offerTokenPrice = parseFloat(prices[offer.offerTokenAddress?.toLowerCase()] || '0');
-                            if (offerTokenPrice > 0) {
-                              // offerPrice = offerTokenPrice * price (how much buyerToken you get per offerToken)
-                              // But we want buyerToken price, so: buyerTokenPrice = offerTokenPrice / price
-                              offerPriceInDollar = offerTokenPrice / priceBN.toNumber();
-                            }
-                          } else if (isOfferTokenProperty) {
+                            // price = buyerTokenAmount / offerTokenAmount
+                            // So: buyerTokenPrice = offerTokenPrice * price
+                            offerPriceInDollar = offerTokenPriceUSD * priceBN.toNumber();
+                          } else if (isOfferTokenProperty && buyerTokenPriceUSD !== undefined && buyerTokenPriceUSD > 0) {
                             // Property token is offerToken
-                            // Get the price of buyerToken from prices
-                            const buyerTokenPrice = parseFloat(prices[offer.buyerTokenAddress?.toLowerCase()] || '0');
-                            if (buyerTokenPrice > 0) {
-                              // offerPrice = buyerTokenPrice * price (how much buyerToken per offerToken)
-                              offerPriceInDollar = buyerTokenPrice * priceBN.toNumber();
-                            }
+                            // price = buyerTokenAmount / offerTokenAmount
+                            // So: offerTokenPrice = buyerTokenPrice / price
+                            offerPriceInDollar = buyerTokenPriceUSD / priceBN.toNumber();
                           }
                           
                           // Calculate priceDelta if we have offerPriceInDollar
