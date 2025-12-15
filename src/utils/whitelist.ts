@@ -10,39 +10,43 @@ export const getNotWhitelistedTokens = (
   offer: Offer,
   properties: PropertiesToken[]
 ): PropertiesToken[] => {
-  // Bypass WL universel
-  if (isUniversalWhitelisted(wlTokenId)) return [];
+  // Whitelisting check disabled - always return empty array (all tokens are whitelisted)
+  return [];
+  
+  // Original whitelisting logic (disabled):
+  // // Bypass WL universel
+  // if (isUniversalWhitelisted(wlTokenId)) return [];
 
-  let tokenAddressToCheck: string[] = [];
-  switch (offer.type) {
-    case OFFER_TYPE.BUY:
-      tokenAddressToCheck = [offer.buyerTokenAddress];
-      break;
-    case OFFER_TYPE.SELL:
-      tokenAddressToCheck = [offer.offerTokenAddress];
-      break;
-    case OFFER_TYPE.EXCHANGE:
-      tokenAddressToCheck = [offer.buyerTokenAddress, offer.offerTokenAddress];
-      break;
-  }
+  // let tokenAddressToCheck: string[] = [];
+  // switch (offer.type) {
+  //   case OFFER_TYPE.BUY:
+  //     tokenAddressToCheck = [offer.buyerTokenAddress];
+  //     break;
+  //   case OFFER_TYPE.SELL:
+  //     tokenAddressToCheck = [offer.offerTokenAddress];
+  //     break;
+  //   case OFFER_TYPE.EXCHANGE:
+  //     tokenAddressToCheck = [offer.buyerTokenAddress, offer.offerTokenAddress];
+  //     break;
+  // }
 
-  const tokenNoWlNeeded = TOKEN_ID_NO_WL_NEEDED;
+  // const tokenNoWlNeeded = TOKEN_ID_NO_WL_NEEDED;
 
-  const notWlTokens: PropertiesToken[] = [];
-  tokenAddressToCheck.forEach((tokenAddress: string) => {
-    const token = properties.find(
-      (token: PropertiesToken) =>
-        token.contractAddress.toLowerCase() == tokenAddress.toLowerCase()
-    );
+  // const notWlTokens: PropertiesToken[] = [];
+  // tokenAddressToCheck.forEach((tokenAddress: string) => {
+  //   const token = properties.find(
+  //     (token: PropertiesToken) =>
+  //       token.contractAddress.toLowerCase() == tokenAddress.toLowerCase()
+  //   );
 
-    if (
-      token &&
-      !wlTokenId.includes(token.tokenIdRules) &&
-      !tokenNoWlNeeded.includes(token?.tokenIdRules)
-    ) {
-      notWlTokens.push(token);
-    }
-  });
+  //   if (
+  //     token &&
+  //     !wlTokenId.includes(token.tokenIdRules) &&
+  //     !tokenNoWlNeeded.includes(token?.tokenIdRules)
+  //   ) {
+  //     notWlTokens.push(token);
+  //   }
+  // });
 
-  return notWlTokens;
+  // return notWlTokens;
 };
