@@ -249,7 +249,7 @@ const ViewOfferPage = () => {
   // This useEffect was overwriting the API-fetched tokens with only local cache tokens
   // Removed to preserve the API-fetched tokens with annualYield and officialPrice
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!offerId) {
       setError('Please enter an offer ID');
       return;
@@ -263,6 +263,107 @@ const ViewOfferPage = () => {
 
     // Update URL without reload
     router.push(`/view-offer?id=${id}`, undefined, { shallow: true });
+    
+    // Force fetch by clearing and resetting offerId to trigger useEffect
+    // This ensures the fetch runs even if the offerId value hasn't changed
+    setOffer(undefined);
+    setError(null);
+    
+    // The useEffect will handle the fetch when dependencies are ready
+    // But we can also trigger it directly if all dependencies are available
+    if (effectiveChainId && provider && account && propertiesToken && prices) {
+      setIsLoading(true);
+      try {
+        console.log('Fetching offer with chainId:', effectiveChainId, 'offerId:', id);
+        
+        const fetchedOffer = await fetchOfferRpc(
+          provider,
+          account,
+          effectiveChainId,
+          id,
+          propertiesToken,
+          wlProperties || [],
+          prices
+        );
+
+        if (fetchedOffer) {
+          setOffer(fetchedOffer);
+          setError(null);
+          
+          // Fetch property tokens for the offer
+          const fetchedPropertyTokens: PropertiesToken[] = [];
+          
+          console.log('Fetching property tokens:', {
+            buyerTokenAddress: fetchedOffer.buyerTokenAddress,
+            buyerTokenType: fetchedOffer.buyerTokenType,
+            offerTokenAddress: fetchedOffer.offerTokenAddress,
+            offerTokenType: fetchedOffer.offerTokenType,
+          });
+          
+          // Try to fetch property for buyerToken
+          const buyerTokenProperty = getPropertyToken(fetchedOffer.buyerTokenAddress);
+          if (buyerTokenProperty) {
+            console.log(`Found buyerToken property in cache: ${buyerTokenProperty.shortName}`);
+            fetchedPropertyTokens.push(buyerTokenProperty);
+          } else {
+            console.log(`Property not found locally for buyerToken ${fetchedOffer.buyerTokenAddress}, fetching from API...`);
+            try {
+              const response = await fetch(`/api/property/${effectiveChainId}/${fetchedOffer.buyerTokenAddress}`);
+              if (response.ok) {
+                const apiToken = await response.json();
+                console.log(`Successfully fetched buyerToken property from API: ${apiToken.shortName}`);
+                fetchedPropertyTokens.push(apiToken);
+              } else {
+                console.warn(`Failed to fetch buyerToken property from API: ${response.status}`);
+              }
+            } catch (apiError) {
+              console.error('Error fetching buyerToken property from API:', apiError);
+            }
+          }
+          
+          // Try to fetch property for offerToken (for exchange offers)
+          const offerTokenProperty = getPropertyToken(fetchedOffer.offerTokenAddress);
+          if (offerTokenProperty) {
+            console.log(`Found offerToken property in cache: ${offerTokenProperty.shortName}`);
+            // Only add if it's different from buyerToken
+            if (offerTokenProperty.contractAddress.toLowerCase() !== fetchedOffer.buyerTokenAddress.toLowerCase()) {
+              fetchedPropertyTokens.push(offerTokenProperty);
+            }
+          } else if (fetchedOffer.offerTokenType === 1) {
+            console.log(`Property not found locally for offerToken ${fetchedOffer.offerTokenAddress}, fetching from API...`);
+            try {
+              const response = await fetch(`/api/property/${effectiveChainId}/${fetchedOffer.offerTokenAddress}`);
+              if (response.ok) {
+                const apiToken = await response.json();
+                console.log(`Successfully fetched offerToken property from API: ${apiToken.shortName}`);
+                // Only add if it's different from buyerToken
+                if (apiToken.contractAddress.toLowerCase() !== fetchedOffer.buyerTokenAddress.toLowerCase()) {
+                  fetchedPropertyTokens.push(apiToken);
+                }
+              } else {
+                console.warn(`Failed to fetch offerToken property from API: ${response.status}`);
+              }
+            } catch (apiError) {
+              console.error('Error fetching offerToken property from API:', apiError);
+            }
+          }
+          
+          setPropertyTokens(fetchedPropertyTokens);
+        } else {
+          setError('Offer not found. Please check the offer ID and ensure you are connected to the correct network.');
+          setOffer(undefined);
+        }
+      } catch (err: any) {
+        console.error('Error fetching offer:', err);
+        setError(err?.message || 'Failed to fetch offer. Please try again.');
+        setOffer(undefined);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // If dependencies aren't ready, the useEffect will handle it
+      console.log('Dependencies not ready, useEffect will handle fetch when ready');
+    }
   };
 
   const isAccountOffer = useMemo(() => {
