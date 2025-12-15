@@ -31,8 +31,8 @@ export const MarketTablePrivate: FC = () => {
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
   // Component is only rendered when tab is active, so this will only fetch when needed
-  const { offers: privateOffers, offersAreLoading, refetch } = usePrivateOffers();
-  const { offers, sellCount, buyCount, exchangeCount } = useTypedOffers(privateOffers)
+  const { offers: privateOffers, offersAreLoading, refetch } = usePrivateOffers(enabled);
+  const { offers, sellCount, buyCount, exchangeCount } = useTypedOffers(privateOffers, offersAreLoading)
   const columns = useRightTableColumn(OFFERS_TYPE.PRIVATE);
 
   const table = useReactTable({

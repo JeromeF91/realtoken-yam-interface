@@ -33,8 +33,7 @@ export const useOffers: UseOffers = () => {
   } = useQuery({
     queryKey: ['offers', chainId],
     meta: { errCode: REACT_QUERY_ERRORS.FETCH_OFFERS },
-    enabled:
-      !!chainId && !!account && !!properties && !!prices && !!wlProperties,
+    enabled: false, // Disabled by default - only enable when explicitly needed (e.g., admin page)
     queryFn: async (): Promise<Offer[]> => {
       if (!chainId || !account || !properties || !prices || !wlProperties)
         return OFFER_LOADING;
