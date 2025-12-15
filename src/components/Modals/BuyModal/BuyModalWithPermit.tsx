@@ -87,11 +87,13 @@ export const BuyModalWithPermit: FC<
   const buyTokenSymbol = offer.buyerTokenName; // Use name as symbol fallback
   
   // Get property token info - when buying, we're buying the buyerToken (property token)
-  // Based on the view-offer page display:
-  // - "Seller Address" shows offer.buyerTokenAddress - this is the seller's wallet
-  // - "Token Smart Contract" shows offer.sellerAddress - this is the property token contract
-  // So we need to use sellerAddress to get the property token!
-  const { propertyToken: buyerPropertyToken } = usePropertyToken(offer.sellerAddress);
+  // The buyerTokenAddress is the property token contract address
+  // Try buyerTokenAddress first (this is the property token when buying)
+  const { propertyToken: buyerPropertyTokenFromBuyerToken } = usePropertyToken(offer.buyerTokenAddress);
+  // Also try offerTokenAddress in case it's a property token (for exchange offers)
+  const { propertyToken: buyerPropertyTokenFromOfferToken } = usePropertyToken(offer.offerTokenAddress);
+  // Use whichever one is found, prefer buyerTokenAddress
+  const buyerPropertyToken = buyerPropertyTokenFromBuyerToken || buyerPropertyTokenFromOfferToken;
   const { propertiesIsloading } = usePropertiesToken();
   
   // Use property token short name if available, otherwise fall back to symbol
