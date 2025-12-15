@@ -847,7 +847,8 @@ const ViewOfferPage = () => {
                       </Button>
                     ) : null}
                     
-                    {(() => {
+                    {/* Whitelisting check disabled temporarily - TheGraph subgraph not returning whitelist data */}
+                    {false && (() => {
                       // Check whitelisting status
                       if (!account || !offer || !wlProperties) return null;
                       
