@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useWeb3React } from '@web3-react/core';
 import {
@@ -19,7 +19,7 @@ import {
   Grid,
   Box,
 } from '@mantine/core';
-import { IconSearch, IconAlertCircle, IconInfoCircle } from '@tabler/icons';
+import { IconSearch, IconAlertCircle, IconInfoCircle, IconTrash } from '@tabler/icons';
 import { useTranslation } from 'react-i18next';
 import BigNumber from 'bignumber.js';
 
@@ -33,6 +33,10 @@ import { BuyActionsWithPermit } from 'src/components/Market/BuyActions/BuyAction
 import { OfferText } from 'src/components/Offer/OfferText';
 import { fetchPropertyByAddress } from 'src/utils/api/fetchPropertyByAddress';
 import { PropertiesToken } from 'src/types/PropertiesToken';
+import { DeleteActions } from 'src/components/Market/DeleteActions/DeleteActions';
+import { useModals } from '@mantine/modals';
+import { Title } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 
 // Cache chainId to avoid repeated RPC calls
 let cachedChainId: number | undefined = undefined;
@@ -238,10 +242,35 @@ const ViewOfferPage = () => {
 
   const isAccountOffer = useMemo(() => {
     if (!offer || !account) return false;
-    return offer.sellerAddress === account.toLowerCase();
+    return offer.sellerAddress.toLowerCase() === account.toLowerCase();
   }, [offer, account]);
 
   const isConnected = !!account && !!provider && !!effectiveChainId;
+  
+  const modals = useModals();
+  const { t: tModals } = useTranslation('modals');
+  
+  // Handle delete success - clear offer and redirect
+  const handleDeleteSuccess = useCallback(() => {
+    setOffer(undefined);
+    setOfferId('');
+    setError(null);
+    router.push('/view-offer', undefined, { shallow: true });
+  }, [router]);
+  
+  // Open delete modal for this offer
+  const handleDeleteOffer = useCallback(() => {
+    if (!offer) return;
+    
+    modals.openContextModal('delete', {
+      title: <Title order={3}>{tModals('delete.title')}</Title>,
+      size: "lg",
+      innerProps: {
+        offerIds: [offer.offerId],
+        onSuccess: handleDeleteSuccess,
+      },
+    });
+  }, [modals, offer, tModals, handleDeleteSuccess]);
 
   return (
     <Container size="lg" py="xl">
@@ -413,7 +442,17 @@ const ViewOfferPage = () => {
 
                   <Divider />
 
-                  <Flex justify="center">
+                  <Flex justify="center" gap="md" direction="column" align="center">
+                    {isAccountOffer && (
+                      <Button
+                        color="red"
+                        variant="filled"
+                        onClick={handleDeleteOffer}
+                        leftSection={<IconTrash size={16} />}
+                      >
+                        Delete Offer
+                      </Button>
+                    )}
                     <BuyActionsWithPermit
                       buyOffer={offer}
                       loading={isLoading}
