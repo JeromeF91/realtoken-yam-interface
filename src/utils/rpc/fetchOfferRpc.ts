@@ -252,28 +252,29 @@ export const fetchOfferRpc = async (
     // But we can't check balance yet, so let's use a different approach:
     // Check if the order [value0, value1] or [value1, value0] makes more sense
     
-    // Try order 1: value0 = offerToken, value1 = buyerToken
-    let testOfferTokenType = type0.toNumber();
-    let testBuyerTokenType = type1.toNumber();
-    let isOrder1Valid = true;
+    // Determine which is offerToken and which is buyerToken
+    // The seller should have balance of offerToken (what they're selling)
+    // Since seller is at position 2, positions 0 and 1 are the two tokens
+    // 
+    // Based on other files using [seller, offerToken, buyerToken, buyer, price, amount],
+    // but seller is actually at position 2, the order might be:
+    // [buyerToken, offerToken, seller, buyer, price, amount]
+    // OR: [offerToken, buyerToken, seller, buyer, price, amount]
+    //
+    // Let's try swapping: value1 = offerToken, value0 = buyerToken
+    // This matches the pattern where seller comes after the tokens
+    offerTokenAddress = value1; // Try value1 as offerToken
+    buyerTokenAddress = value0; // Try value0 as buyerToken
+    let offerTokenInfo = tokenInfo1;
+    let buyerTokenInfo = tokenInfo0;
+    let offerTokenType = type1.toNumber();
+    let offerTokenName = name1;
+    let offerTokenSymbol = symbol1;
+    let buyerTokenType = type0.toNumber();
+    let buyerTokenName = name0;
+    let buyerTokenSymbol = symbol0;
     
-    // Validate: offerToken and buyerToken shouldn't both be the same type (unless exchange)
-    // Also, if seller has balance of a token, that token is likely offerToken
-    // For now, let's assume value0 = offerToken, value1 = buyerToken
-    // If property lookup fails, we'll know to swap them
-    
-    offerTokenAddress = value0;
-    buyerTokenAddress = value1;
-    let offerTokenInfo = tokenInfo0;
-    let buyerTokenInfo = tokenInfo1;
-    let offerTokenType = type0.toNumber();
-    let offerTokenName = name0;
-    let offerTokenSymbol = symbol0;
-    let buyerTokenType = type1.toNumber();
-    let buyerTokenName = name1;
-    let buyerTokenSymbol = symbol1;
-    
-    console.log('Token assignment:', {
+    console.log('Token assignment (swapped: value1=offerToken, value0=buyerToken):', {
       offerTokenAddress,
       offerTokenType,
       offerTokenName,
@@ -281,7 +282,7 @@ export const fetchOfferRpc = async (
       buyerTokenType,
       buyerTokenName,
       seller,
-      note: 'If property lookup fails, may need to swap value0 and value1',
+      note: 'Testing swapped order - if this doesn\'t work, will try value0=offerToken, value1=buyerToken',
     });
 
     // Get token decimals from ERC20 contracts (with fallback for non-ERC20 tokens)
