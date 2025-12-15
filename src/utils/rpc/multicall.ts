@@ -75,14 +75,7 @@ export const multicall = async (
   }
 
   try {
-    // Ensure provider is ready (detect network if needed)
-    try {
-      await provider.getNetwork();
-    } catch (networkError: any) {
-      // If network detection fails, try to get the network from the provider's connection
-      console.warn('Network detection failed, attempting to continue:', networkError?.message);
-    }
-    
+    // Provider is already configured with explicit chainId, no need to call getNetwork()
     const multicallContract = new Contract(MULTICALL3_ADDRESS, MULTICALL3_ABI, provider);
     
     // Use aggregate3 which allows failures

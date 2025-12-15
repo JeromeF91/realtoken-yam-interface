@@ -47,17 +47,7 @@ export const fetchOfferRpc = async (
     }
     
     const { address: yamContractAddress } = chainConfig.contracts.realTokenYamUpgradeable;
-    console.log(`Fetching offer ${offerId} on chain ${finalChainId} (${chainConfig.chainName}) using RPC: ${chainConfig.rpcUrl}, contract: ${yamContractAddress}`);
-    
-    // Verify the provider's network matches
-    try {
-      const providerNetwork = await rpcProvider.getNetwork();
-      if (providerNetwork.chainId !== finalChainId) {
-        console.warn(`Provider network chainId (${providerNetwork.chainId}) doesn't match requested chainId (${finalChainId})`);
-      }
-    } catch (networkError) {
-      console.warn('Could not verify provider network:', networkError);
-    }
+    // Provider is already configured with explicit chainId, no need to verify via getNetwork()
 
     // Get YAM contract instance
     const yamContract = new Contract(
