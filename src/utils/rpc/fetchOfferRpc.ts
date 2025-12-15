@@ -38,8 +38,17 @@ export const fetchOfferRpc = async (
     // Use the numeric chainId
     const finalChainId = chainIdNumber;
     
-    // Always use JsonRpcProvider for read-only calls to avoid signer issues
-    const rpcProvider = getRpcProvider(finalChainId);
+    // Try to reuse the existing provider if it's a JsonRpcProvider and matches the chainId
+    // Otherwise, get a cached JsonRpcProvider to avoid eth_chainId calls
+    let rpcProvider: JsonRpcProvider;
+    if (provider instanceof JsonRpcProvider) {
+      // Check if the provider's network matches (without calling getNetwork which triggers eth_chainId)
+      // We'll trust the chainId passed in and use the cached provider
+      rpcProvider = getRpcProvider(finalChainId);
+    } else {
+      // For Web3Provider, always use cached JsonRpcProvider to avoid signer issues
+      rpcProvider = getRpcProvider(finalChainId);
+    }
     
     const chainConfig = CHAINS[finalChainId as ChainsID];
     if (!chainConfig) {

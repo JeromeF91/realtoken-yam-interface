@@ -34,10 +34,24 @@ import { OfferText } from 'src/components/Offer/OfferText';
 import { fetchPropertyByAddress } from 'src/utils/api/fetchPropertyByAddress';
 import { PropertiesToken } from 'src/types/PropertiesToken';
 
+// Cache chainId to avoid repeated RPC calls
+let cachedChainId: number | undefined = undefined;
+
 const ViewOfferPage = () => {
   const router = useRouter();
   const { account, provider, chainId } = useWeb3React();
   const { t } = useTranslation('modals', { keyPrefix: 'buy' });
+  
+  // Use cached chainId if available, otherwise use the one from useWeb3React
+  // This prevents unnecessary RPC calls when chainId hasn't actually changed
+  const effectiveChainId = chainId || cachedChainId;
+  
+  // Update cache when chainId changes
+  useEffect(() => {
+    if (chainId) {
+      cachedChainId = chainId;
+    }
+  }, [chainId]);
   
   const [offerId, setOfferId] = useState<string>('');
   const [offer, setOffer] = useState<Offer | undefined>(undefined);
@@ -64,7 +78,7 @@ const ViewOfferPage = () => {
       }
       
       // Log what's missing
-      if (!chainId) console.log('Waiting for chainId...');
+      if (!effectiveChainId) console.log('Waiting for chainId...');
       if (!provider) console.log('Waiting for provider...');
       if (!account) console.log('Waiting for account...');
       if (!propertiesToken) console.log('Waiting for propertiesToken...');
@@ -72,7 +86,7 @@ const ViewOfferPage = () => {
       if (!wlProperties) console.log('Waiting for wlProperties...');
       
       // wlProperties is optional - only used for accountWhitelisted flag
-      if (!chainId || !provider || !account || !propertiesToken || !prices) {
+      if (!effectiveChainId || !provider || !account || !propertiesToken || !prices) {
         return;
       }
 
@@ -88,9 +102,9 @@ const ViewOfferPage = () => {
 
       try {
         // Log chainId for debugging
-        console.log('Fetching offer with chainId:', chainId, 'offerId:', id);
+        console.log('Fetching offer with chainId:', effectiveChainId, 'offerId:', id);
         
-        if (!chainId) {
+        if (!effectiveChainId) {
           setError('No chain ID detected. Please connect your wallet and switch to the correct network.');
           setIsLoading(false);
           return;
@@ -100,7 +114,7 @@ const ViewOfferPage = () => {
         const fetchedOffer = await fetchOfferRpc(
           provider,
           account,
-          chainId,
+          effectiveChainId,
           id,
           propertiesToken,
           wlProperties || [],
@@ -122,7 +136,7 @@ const ViewOfferPage = () => {
             } else {
               // If not found locally, try fetching from API using the address
               console.log(`Property not found locally for buyerToken ${fetchedOffer.buyerTokenAddress}, fetching from API...`);
-              const apiToken = await fetchPropertyByAddress(fetchedOffer.buyerTokenAddress, chainId);
+              const apiToken = await fetchPropertyByAddress(fetchedOffer.buyerTokenAddress, effectiveChainId);
               if (apiToken) {
                 fetchedPropertyTokens.push(apiToken);
                 console.log(`Fetched property from API: ${apiToken.shortName}`);
@@ -137,7 +151,7 @@ const ViewOfferPage = () => {
             } else {
               // If not found locally, try fetching from API using the address
               console.log(`Property not found locally for offerToken ${fetchedOffer.offerTokenAddress}, fetching from API...`);
-              const apiToken = await fetchPropertyByAddress(fetchedOffer.offerTokenAddress, chainId);
+              const apiToken = await fetchPropertyByAddress(fetchedOffer.offerTokenAddress, effectiveChainId);
               if (apiToken) {
                 fetchedPropertyTokens.push(apiToken);
                 console.log(`Fetched property from API: ${apiToken.shortName}`);
@@ -158,7 +172,7 @@ const ViewOfferPage = () => {
             } else {
               // Try fetching from API using the seller address (token contract address)
               console.log(`Trying to fetch property from API using seller address (token UUID): ${fetchedOffer.sellerAddress}`);
-              const apiToken = await fetchPropertyByAddress(fetchedOffer.sellerAddress, chainId);
+              const apiToken = await fetchPropertyByAddress(fetchedOffer.sellerAddress, effectiveChainId);
               if (apiToken && !fetchedPropertyTokens.find(t => t.contractAddress === apiToken.contractAddress)) {
                 fetchedPropertyTokens.push(apiToken);
                 console.log(`Fetched property from API using seller address: ${apiToken.shortName}`, {
@@ -196,11 +210,11 @@ const ViewOfferPage = () => {
     };
 
     // Don't wait for wlProperties - it's only used for accountWhitelisted flag, not critical for viewing
-    if (offerId && chainId && provider && account && propertiesToken && prices) {
+    if (offerId && effectiveChainId && provider && account && propertiesToken && prices) {
       fetchOffer();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offerId, chainId, provider, account, propertiesToken, prices]);
+  }, [offerId, effectiveChainId, provider, account, propertiesToken, prices]);
 
   // Note: Property tokens are now set directly in fetchOffer function
   // This useEffect was overwriting the API-fetched tokens with only local cache tokens
@@ -227,7 +241,7 @@ const ViewOfferPage = () => {
     return offer.sellerAddress === account.toLowerCase();
   }, [offer, account]);
 
-  const isConnected = !!account && !!provider && !!chainId;
+  const isConnected = !!account && !!provider && !!effectiveChainId;
 
   return (
     <Container size="lg" py="xl">
@@ -267,9 +281,9 @@ const ViewOfferPage = () => {
               }
             />
             
-            {isConnected && chainId && (
+            {isConnected && effectiveChainId && (
               <Alert icon={<IconInfoCircle size={16} />} color="green" variant="light">
-                Connected to chain {chainId}. Ready to fetch offer {offerId || '(enter ID above)'}
+                Connected to chain {effectiveChainId}. Ready to fetch offer {offerId || '(enter ID above)'}
               </Alert>
             )}
           </Stack>
