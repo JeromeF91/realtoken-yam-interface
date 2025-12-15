@@ -15,58 +15,9 @@ import { getExtendedTokens } from '../../constants/GetPriceToken';
 import { batchShowOffers } from './multicall';
 
 /**
- * Conditionally import Redis cache functions (server-side only)
- * This prevents Next.js from bundling ioredis for the client
- */
-const getRedisCacheFunctions = async () => {
-  if (typeof window !== 'undefined') {
-    // Client-side: return no-op functions
-    return {
-      getCache: async () => null,
-      setCache: async () => {},
-      getMultipleCache: async () => new Map(),
-      setMultipleCache: async () => {},
-      isRedisAvailable: async () => false,
-    };
-  }
-  
-  // Server-side: dynamically import Redis cache
-  try {
-    return await import('./redisCache');
-  } catch (error) {
-    console.error('Failed to load Redis cache:', error);
-    return {
-      getCache: async () => null,
-      setCache: async () => {},
-      getMultipleCache: async () => new Map(),
-      setMultipleCache: async () => {},
-      isRedisAvailable: async () => false,
-    };
-  }
-};
-
-/**
  * Delay function for rate limiting
  */
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-/**
- * Cache key prefixes
- */
-const CACHE_PREFIX = {
-  TOKEN_INFO: 'token:info:',
-  TOKEN_DECIMALS: 'token:decimals:',
-  ACCOUNT_BALANCE: 'account:balance:',
-};
-
-/**
- * Cache TTL in seconds
- */
-const CACHE_TTL = {
-  TOKEN_INFO: 3600, // 1 hour
-  TOKEN_DECIMALS: 3600, // 1 hour
-  ACCOUNT_BALANCE: 60, // 1 minute
-};
 
 /**
  * Fetch only user's own offers using RPC calls
@@ -91,12 +42,7 @@ export const fetchUserOffersRpc = async (
       provider
     ) as RealTokenYamUpgradeable;
 
-    // Load Redis cache functions (server-side only)
-    const redisCache = await getRedisCacheFunctions();
-    const useRedis = await redisCache.isRedisAvailable();
-    console.log(`Using Redis cache: ${useRedis}`);
-
-    // In-memory caches as fallback
+    // In-memory caches
     const tokenInfoCache = new Map<string, { tokenType: number; name: string; symbol: string }>();
     const tokenDecimalsCache = new Map<string, number>();
     const accountRealtokenMap = new Map<string, DataRealtokenType>();
@@ -236,27 +182,17 @@ export const fetchUserOffersRpc = async (
     const tokenArray = Array.from(uniqueTokens);
     console.log(`Fetching info for ${tokenArray.length} unique tokens`);
 
-    // Try to load from Redis cache first
-    if (useRedis) {
-      const cacheKeys = tokenArray.map(token => `${CACHE_PREFIX.TOKEN_INFO}${chainId}:${token}`);
-      const cachedTokenInfo = await redisCache.getMultipleCache<{ tokenType: number; name: string; symbol: string }>(cacheKeys);
-      
-      cachedTokenInfo.forEach((value, key) => {
-        const tokenAddress = key.replace(`${CACHE_PREFIX.TOKEN_INFO}${chainId}:`, '');
-        tokenInfoCache.set(tokenAddress, value);
-      });
-    }
-
-    // Fetch token info from contract in batches (only for missing tokens)
-    const missingTokens = tokenArray.filter(token => !tokenInfoCache.has(token));
-    console.log(`Found ${tokenArray.length - missingTokens.length} cached token info, fetching ${missingTokens.length} missing`);
-
+    // Fetch token info from contract in batches
     const tokenInfoBatchSize = 15;
-    const tokensToCache: Array<{ key: string; value: any }> = [];
     
-    for (let i = 0; i < missingTokens.length; i += tokenInfoBatchSize) {
-      const batch = missingTokens.slice(i, i + tokenInfoBatchSize);
+    for (let i = 0; i < tokenArray.length; i += tokenInfoBatchSize) {
+      const batch = tokenArray.slice(i, i + tokenInfoBatchSize);
       const promises = batch.map(async (tokenAddress) => {
+        // Skip if already cached
+        if (tokenInfoCache.has(tokenAddress)) {
+          return;
+        }
+        
         try {
           const tokenInfo = await yamContract.callStatic.tokenInfo(tokenAddress);
           const [tokenType, name, symbol] = tokenInfo;
@@ -266,82 +202,42 @@ export const fetchUserOffersRpc = async (
             symbol,
           };
           tokenInfoCache.set(tokenAddress, info);
-          
-          if (useRedis) {
-            tokensToCache.push({
-              key: `${CACHE_PREFIX.TOKEN_INFO}${chainId}:${tokenAddress}`,
-              value: info,
-            });
-          }
         } catch (error) {
           console.error(`Error fetching tokenInfo for ${tokenAddress}:`, error);
         }
       });
       
       await Promise.all(promises);
-      if (i + tokenInfoBatchSize < missingTokens.length) {
+      if (i + tokenInfoBatchSize < tokenArray.length) {
         await delay(100);
       }
     }
 
-    // Cache token info in Redis
-    if (useRedis && tokensToCache.length > 0) {
-      await redisCache.setMultipleCache(tokensToCache, CACHE_TTL.TOKEN_INFO);
-    }
-
     // Step 3: Fetch decimals for unique tokens
-    if (useRedis) {
-      const cacheKeys = tokenArray.map(token => `${CACHE_PREFIX.TOKEN_DECIMALS}${chainId}:${token}`);
-      const cachedDecimals = await redisCache.getMultipleCache<number>(cacheKeys);
-      
-      cachedDecimals.forEach((value, key) => {
-        const tokenAddress = key.replace(`${CACHE_PREFIX.TOKEN_DECIMALS}${chainId}:`, '');
-        tokenDecimalsCache.set(tokenAddress, value);
-      });
-    }
-
-    const missingDecimals = tokenArray.filter(token => !tokenDecimalsCache.has(token));
-    console.log(`Found ${tokenArray.length - missingDecimals.length} cached decimals, fetching ${missingDecimals.length} missing`);
-
     const decimalsBatchSize = 20;
-    const decimalsToCache: Array<{ key: string; value: any }> = [];
     
-    for (let i = 0; i < missingDecimals.length; i += decimalsBatchSize) {
-      const batch = missingDecimals.slice(i, i + decimalsBatchSize);
+    for (let i = 0; i < tokenArray.length; i += decimalsBatchSize) {
+      const batch = tokenArray.slice(i, i + decimalsBatchSize);
       const promises = batch.map(async (tokenAddress) => {
+        // Skip if already cached
+        if (tokenDecimalsCache.has(tokenAddress)) {
+          return;
+        }
+        
         try {
           const info = await getTokenInfo(tokenAddress, provider);
           tokenDecimalsCache.set(tokenAddress, info.decimals);
-          
-          if (useRedis) {
-            decimalsToCache.push({
-              key: `${CACHE_PREFIX.TOKEN_DECIMALS}${chainId}:${tokenAddress}`,
-              value: info.decimals,
-            });
-          }
         } catch (error) {
           console.error(`Error fetching decimals for ${tokenAddress}:`, error);
           const defaultValue = 18;
           tokenDecimalsCache.set(tokenAddress, defaultValue);
-          
-          if (useRedis) {
-            decimalsToCache.push({
-              key: `${CACHE_PREFIX.TOKEN_DECIMALS}${chainId}:${tokenAddress}`,
-              value: defaultValue,
-            });
-          }
         }
       });
       
       await Promise.all(promises);
-      if (i + decimalsBatchSize < missingDecimals.length) {
+      if (i + decimalsBatchSize < tokenArray.length) {
         await delay(100);
       }
-    }
-
-    // Cache decimals in Redis
-    if (useRedis && decimalsToCache.length > 0) {
-      await redisCache.setMultipleCache(decimalsToCache, CACHE_TTL.TOKEN_DECIMALS);
     }
 
     // Step 4: Collect unique account-token pairs for balance/allowance fetching
@@ -352,26 +248,17 @@ export const fetchUserOffersRpc = async (
     });
 
     // Step 5: Fetch balances and allowances
-    if (useRedis) {
-      const accountTokenArray = Array.from(uniqueAccountTokens);
-      const cacheKeys = accountTokenArray.map(key => `${CACHE_PREFIX.ACCOUNT_BALANCE}${chainId}:${key}`);
-      const cachedBalances = await redisCache.getMultipleCache<DataRealtokenType>(cacheKeys);
-      
-      cachedBalances.forEach((value, key) => {
-        const accountKey = key.replace(`${CACHE_PREFIX.ACCOUNT_BALANCE}${chainId}:`, '');
-        accountRealtokenMap.set(accountKey, value);
-      });
-    }
-
-    const missingBalances = Array.from(uniqueAccountTokens).filter(key => !accountRealtokenMap.has(key));
-    console.log(`Found ${uniqueAccountTokens.size - missingBalances.length} cached balances, fetching ${missingBalances.length} missing`);
-
     const balanceBatchSize = 10;
-    const balancesToCache: Array<{ key: string; value: any }> = [];
+    const accountTokenArray = Array.from(uniqueAccountTokens);
     
-    for (let i = 0; i < missingBalances.length; i += balanceBatchSize) {
-      const batch = missingBalances.slice(i, i + balanceBatchSize);
+    for (let i = 0; i < accountTokenArray.length; i += balanceBatchSize) {
+      const batch = accountTokenArray.slice(i, i + balanceBatchSize);
       const promises = batch.map(async (accountKey) => {
+        // Skip if already cached
+        if (accountRealtokenMap.has(accountKey)) {
+          return;
+        }
+        
         const [seller, tokenAddress] = accountKey.split('-');
         const tokenInfo = tokenInfoCache.get(tokenAddress);
         
@@ -391,13 +278,6 @@ export const fetchUserOffersRpc = async (
             };
             
             accountRealtokenMap.set(accountKey, balanceData);
-            
-            if (useRedis) {
-              balancesToCache.push({
-                key: `${CACHE_PREFIX.ACCOUNT_BALANCE}${chainId}:${accountKey}`,
-                value: balanceData,
-              });
-            }
           } catch (error) {
             console.error(`Error fetching balance/allowance for ${accountKey}:`, error);
             const balanceData: DataRealtokenType = {
@@ -406,26 +286,14 @@ export const fetchUserOffersRpc = async (
               allowance: '0',
             };
             accountRealtokenMap.set(accountKey, balanceData);
-            
-            if (useRedis) {
-              balancesToCache.push({
-                key: `${CACHE_PREFIX.ACCOUNT_BALANCE}${chainId}:${accountKey}`,
-                value: balanceData,
-              });
-            }
           }
         }
       });
       
       await Promise.all(promises);
-      if (i + balanceBatchSize < missingBalances.length) {
+      if (i + balanceBatchSize < accountTokenArray.length) {
         await delay(150);
       }
-    }
-
-    // Cache balances in Redis
-    if (useRedis && balancesToCache.length > 0) {
-      await redisCache.setMultipleCache(balancesToCache, CACHE_TTL.ACCOUNT_BALANCE);
     }
 
     // Step 6: Process offers with cached data
