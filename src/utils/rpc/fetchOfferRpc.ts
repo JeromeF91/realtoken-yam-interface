@@ -263,14 +263,14 @@ export const fetchOfferRpc = async (
     // This matches the pattern where seller comes after the tokens
     offerTokenAddress = value1; // Try value1 as offerToken
     buyerTokenAddress = value0; // Try value0 as buyerToken
-    let offerTokenInfo = tokenInfo1;
-    let buyerTokenInfo = tokenInfo0;
-    let offerTokenType = type1.toNumber();
-    let offerTokenName = name1;
-    let offerTokenSymbol = symbol1;
-    let buyerTokenType = type0.toNumber();
-    let buyerTokenName = name0;
-    let buyerTokenSymbol = symbol0;
+    const offerTokenInfo = tokenInfo1;
+    const buyerTokenInfo = tokenInfo0;
+    const offerTokenType = type1.toNumber();
+    const offerTokenName = name1;
+    const offerTokenSymbol = symbol1;
+    const buyerTokenType = type0.toNumber();
+    const buyerTokenName = name0;
+    const buyerTokenSymbol = symbol0;
     
     console.log('Token assignment (swapped: value1=offerToken, value0=buyerToken):', {
       offerTokenAddress,
