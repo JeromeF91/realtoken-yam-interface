@@ -82,9 +82,17 @@ export const BuyModalWithPermit: FC<
   const { name:offerTokenName, symbol:offerTokenSymbol  } = useERC20TokenInfo(offer.offerTokenAddress);
   const { symbol:buyTokenSymbol, address:buyerTokenAddress } = useERC20TokenInfo(offer.buyerTokenAddress);
   
-  // Get property token info for buyerToken (what you're buying)
-  const { propertyToken: buyerPropertyToken } = usePropertyToken(offer.buyerTokenAddress);
+  // Get property token info - when buying, the property token is buyerToken
+  // But since tokens are reversed, we need to check which one is actually the property token
+  // For a BUY offer type, the property token is in offerTokenAddress
+  // For a SELL offer type, the property token is in buyerTokenAddress
+  // Let's try both addresses to find the property token
+  const { propertyToken: buyerPropertyTokenFromBuyerToken } = usePropertyToken(offer.buyerTokenAddress);
+  const { propertyToken: buyerPropertyTokenFromOfferToken } = usePropertyToken(offer.offerTokenAddress);
   const { propertiesIsloading } = usePropertiesToken();
+  
+  // Use the property token from whichever address has it
+  const buyerPropertyToken = buyerPropertyTokenFromBuyerToken || buyerPropertyTokenFromOfferToken;
   
   // Use property token short name if available, otherwise fall back to symbol
   const buyerTokenDisplayName = useMemo(() => {
