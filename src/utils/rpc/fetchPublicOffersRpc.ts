@@ -129,7 +129,31 @@ export const fetchPublicOffersRpc = async (
       }
       
       try {
+        // showOffer returns: [seller, offerToken, buyerToken, buyer, price, amount]
+        // Verify we have the correct number of values
+        if (!data || data.length < 6) {
+          console.warn(`Invalid data for offer ${offerId}: expected 6 values, got ${data?.length || 0}`);
+          return;
+        }
+        
         const [seller, offerTokenAddress, buyerTokenAddress, buyer, priceBN, amountBN] = data;
+        
+        // Validate that we have token addresses (not seller/buyer addresses)
+        // Token addresses should be valid Ethereum addresses
+        if (!offerTokenAddress || !buyerTokenAddress || 
+            offerTokenAddress.length !== 42 || buyerTokenAddress.length !== 42 ||
+            offerTokenAddress.toLowerCase() === seller?.toLowerCase() ||
+            buyerTokenAddress.toLowerCase() === seller?.toLowerCase() ||
+            offerTokenAddress.toLowerCase() === buyer?.toLowerCase() ||
+            buyerTokenAddress.toLowerCase() === buyer?.toLowerCase()) {
+          console.warn(`Invalid token addresses for offer ${offerId}:`, {
+            seller,
+            offerTokenAddress,
+            buyerTokenAddress,
+            buyer,
+          });
+          return;
+        }
         
         // Filter for public offers: buyer must be zero address or null
         const buyerAddress = buyer ? buyer.toLowerCase() : '0x0000000000000000000000000000000000000000';
