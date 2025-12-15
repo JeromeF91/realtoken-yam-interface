@@ -84,26 +84,22 @@ export const BuyModalWithPermit: FC<
   const { symbol:buyTokenSymbol, address:buyerTokenAddress } = useERC20TokenInfo(offer.buyerTokenAddress);
   
   // Get property token info - when buying, we're buying the buyerToken (property token)
-  // The property token contract address is in buyerTokenAddress (what you're buying)
-  // NOT in sellerAddress (which is the seller's wallet address)
-  // Try buyerTokenAddress first (what you're buying), then offerTokenAddress as fallback
-  const { propertyToken: buyerPropertyTokenFromBuyerToken } = usePropertyToken(offer.buyerTokenAddress);
-  const { propertyToken: buyerPropertyTokenFromOfferToken } = usePropertyToken(offer.offerTokenAddress);
+  // The property token contract address is the Token Smart Contract (0x3785c1ed79548580fd49a000bf9e5884e8d1207b)
+  // NOT the sellerAddress (which is the seller's wallet address 0x7fbbab3a307765f42beb3d7a0b94dcbaa3240370)
+  // Since tokens are reversed, the property token is in buyerTokenAddress (what you're buying)
+  const { propertyToken: buyerPropertyToken } = usePropertyToken(offer.buyerTokenAddress);
   const { propertiesIsloading } = usePropertiesToken();
-  
-  // Use the property token from buyerTokenAddress (what you're buying) if found,
-  // otherwise try offerTokenAddress
-  const buyerPropertyToken = buyerPropertyTokenFromBuyerToken || buyerPropertyTokenFromOfferToken;
   
   console.log('BuyModal: Property token lookup:', {
     offerType: offer.type,
-    buyerTokenAddress: offer.buyerTokenAddress,
-    offerTokenAddress: offer.offerTokenAddress,
-    sellerAddress: offer.sellerAddress,
-    foundFromBuyerToken: !!buyerPropertyTokenFromBuyerToken,
-    foundFromOfferToken: !!buyerPropertyTokenFromOfferToken,
+    buyerTokenAddress: offer.buyerTokenAddress, // This should be the Token Smart Contract (property token)
+    offerTokenAddress: offer.offerTokenAddress, // This is what you pay with (USDC)
+    sellerAddress: offer.sellerAddress, // This is the seller's wallet address
+    foundPropertyToken: !!buyerPropertyToken,
     propertyTokenShortName: buyerPropertyToken?.shortName,
     propertyTokenContractAddress: buyerPropertyToken?.contractAddress,
+    expectedPropertyTokenAddress: '0x3785c1ed79548580fd49a000bf9e5884e8d1207b',
+    expectedSellerAddress: '0x7fbbab3a307765f42beb3d7a0b94dcbaa3240370',
   });
   
   // Use property token short name if available, otherwise fall back to symbol
