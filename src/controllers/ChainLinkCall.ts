@@ -8,17 +8,20 @@ import { getContract } from "../utils";
 import { GetPriceTokenChainLink } from "../types/GetPriceTokens";
 import { CHAINS, ChainsID } from "../constants";
 
-export const getChainlinkPrice = (allowedToken: GetPriceTokenChainLink, rpcUrl: string, chainId: number) => {
+export const getChainlinkPrice = (allowedToken: GetPriceTokenChainLink, rpcUrl: string, chainId: number | string) => {
     return new Promise<Price>(async (resolve,reject) => {
       try{
+        // Ensure chainId is a number
+        const chainIdNum = typeof chainId === 'string' ? parseInt(chainId, 10) : chainId;
+        
         // Create network object with explicit chainId to avoid auto-detection issues
-        const chain = CHAINS[chainId as ChainsID];
+        const chain = CHAINS[chainIdNum as ChainsID];
         const network: Network = chain ? {
-          chainId,
+          chainId: chainIdNum,
           name: chain.chainName,
         } : {
-          chainId,
-          name: `Chain ${chainId}`,
+          chainId: chainIdNum,
+          name: `Chain ${chainIdNum}`,
         };
 
         // Pass network explicitly to avoid "could not detect network" errors
