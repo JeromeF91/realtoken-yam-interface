@@ -3,20 +3,81 @@ import { APIPropertiesToken, PropertiesToken } from 'src/types/PropertiesToken';
 import { ChainsID } from '../../constants';
 
 /**
+ * In-memory cache for property data
+ * Key: `${chainId}:${addressOrUuid.toLowerCase()}`
+ * Value: PropertiesToken
+ */
+const propertyCache = new Map<string, PropertiesToken>();
+
+/**
+ * Cache TTL: 5 minutes (300000 ms)
+ */
+const CACHE_TTL = 5 * 60 * 1000;
+
+/**
+ * Cache entry with timestamp
+ */
+interface CacheEntry {
+  data: PropertiesToken;
+  timestamp: number;
+}
+
+const cacheWithTimestamp = new Map<string, CacheEntry>();
+
+/**
+ * Get cached property if available and not expired
+ */
+const getCachedProperty = (key: string): PropertiesToken | null => {
+  const entry = cacheWithTimestamp.get(key);
+  if (!entry) {
+    return null;
+  }
+  
+  const now = Date.now();
+  if (now - entry.timestamp > CACHE_TTL) {
+    // Cache expired, remove it
+    cacheWithTimestamp.delete(key);
+    return null;
+  }
+  
+  return entry.data;
+};
+
+/**
+ * Set cached property with timestamp
+ */
+const setCachedProperty = (key: string, data: PropertiesToken): void => {
+  cacheWithTimestamp.set(key, {
+    data,
+    timestamp: Date.now(),
+  });
+};
+
+/**
  * Fetch property information by contract address or UUID from the RealToken Community API
  * Uses the single token endpoint: /v1/token/{uuid}
+ * Results are cached in-memory for 5 minutes to avoid repeated API calls
  */
 export const fetchPropertyByAddress = async (
   addressOrUuid: string,
   chainId: number
 ): Promise<PropertiesToken | null> => {
   try {
+    const addressLower = addressOrUuid.toLowerCase();
+    const cacheKey = `${chainId}:${addressLower}`;
+    
+    // Check cache first
+    const cached = getCachedProperty(cacheKey);
+    if (cached) {
+      console.log(`[fetchPropertyByAddress] Using cached property for ${addressOrUuid} on chain ${chainId}`);
+      return cached;
+    }
+
     const apiKey = process.env.NEXT_PUBLIC_COMMUNITY_API_KEY ?? process.env.COMMUNITY_API_KEY ?? '';
     if (!apiKey) {
       console.warn('COMMUNITY_API_KEY is not set. API requests may fail.');
     }
 
-    const addressLower = addressOrUuid.toLowerCase();
     console.log(`[fetchPropertyByAddress] Fetching property for address/UUID: ${addressOrUuid} on chain ${chainId}`);
 
     // First, try to fetch directly using the UUID/address as the endpoint
@@ -90,6 +151,8 @@ export const fetchPropertyByAddress = async (
         annualYieldPercent: result.annualYield ? (result.annualYield * 100).toFixed(2) + '%' : 'N/A',
       });
 
+      // Cache the result
+      setCachedProperty(cacheKey, result);
       return result;
     } catch (singleTokenError: any) {
       // If single token endpoint fails (404, etc.), fall back to fetching all tokens
@@ -200,6 +263,8 @@ export const fetchPropertyByAddress = async (
         annualYieldPercent: result.annualYield ? (result.annualYield * 100).toFixed(2) + '%' : 'N/A',
       });
 
+      // Cache the result
+      setCachedProperty(cacheKey, result);
       return result;
     }
   } catch (error: any) {
