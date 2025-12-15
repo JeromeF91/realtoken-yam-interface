@@ -656,11 +656,7 @@ const ViewOfferPage = () => {
                       >
                         Delete Offer
                       </Button>
-                    ) : (
-                      <Text size="sm" c="dimmed">
-                        Seller: {offer.sellerAddress} | Your account: {account}
-                      </Text>
-                    )}
+                    ) : null}
                     <BuyActionsWithPermit
                       buyOffer={offer}
                       loading={isLoading}
