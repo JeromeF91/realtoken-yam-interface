@@ -79,9 +79,12 @@ export const BuyModalWithPermit: FC<
   const [isSubmitting, setSubmitting] = useState<boolean>(false);
   const activeChain = useActiveChain();
   
-  const [offerTokenSellerBalance,setOfferTokenSellerBalance] = useState<string|undefined>("");
-  const { name:offerTokenName, symbol:offerTokenSymbol  } = useERC20TokenInfo(offer.offerTokenAddress);
-  const { symbol:buyTokenSymbol, address:buyerTokenAddress } = useERC20TokenInfo(offer.buyerTokenAddress);
+  // Use token info from offer object instead of making RPC calls
+  // The offer already contains offerTokenName, offerTokenDecimals, buyerTokenName, buyerTokenDecimals
+  // Only fetch symbol if name is not available or looks like an address
+  const offerTokenName = offer.offerTokenName;
+  const offerTokenSymbol = offer.offerTokenName || 'USDC'; // Use name as symbol, default to USDC for offerToken
+  const buyTokenSymbol = offer.buyerTokenName; // Use name as symbol fallback
   
   // Get property token info - when buying, we're buying the buyerToken (property token)
   // Based on the view-offer page display:
@@ -126,26 +129,9 @@ export const BuyModalWithPermit: FC<
   const realTokenYamUpgradeable = useContract(
     ContractsID.realTokenYamUpgradeable
   );
-  const offerToken = getContract<Erc20>(
-        offer.offerTokenAddress,
-        Erc20ABI,
-        provider as Web3Provider,
-        account
-  )
-
-  const getOfferTokenInfos = async () => {
-    if(!offerToken) return;
-    try{
-      const balanceSeller = await offerToken.balanceOf(offer.sellerAddress)
-      setOfferTokenSellerBalance((balanceSeller ?? BigNumber(0)).toString())
-    }catch(err){
-      // Silently handle errors
-    }
-  }
-  useEffect(() => {
-    if(offerToken) getOfferTokenInfos();    
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[offerToken])
+  
+  // Removed getOfferTokenInfos - seller balance is not needed for buying
+  // The offer already contains availableAmount which is what matters
 
   const { t } = useTranslation('modals', { keyPrefix: 'buy' });
   const { t: t1 } = useTranslation('modals', { keyPrefix: 'sell' });
@@ -157,7 +143,12 @@ export const BuyModalWithPermit: FC<
 
   // Note: offerToken and buyerToken are reversed in naming
   // When buying, you pay with offerToken, so we need to check the balance of offerToken
-  const { balance, WalletERC20Balance } = useWalletERC20Balance(offer.offerTokenAddress)
+  // Pass decimals and symbol from offer to avoid RPC calls
+  const { balance, WalletERC20Balance } = useWalletERC20Balance(
+    offer.offerTokenAddress,
+    offer.offerTokenDecimals,
+    offerTokenSymbol
+  )
 
   const total = values?.amount * values?.price;
 
@@ -230,7 +221,7 @@ export const BuyModalWithPermit: FC<
               </Flex>
               <Flex direction={"column"} >
                 <Text fw={700}>{offer.type ? amountTranslation.get(offer.type) : ""}</Text>
-                <Text>{BigNumber.minimum(offer.amount,offerTokenSellerBalance!).toString()}</Text>
+                <Text>{offer.availableAmount}</Text>
               </Flex>
               <Flex direction={"column"}>
                   <Text fw={700}>{offer.type ? priceTranslation.get(offer.type) : ""}</Text>

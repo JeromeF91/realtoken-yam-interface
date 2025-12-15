@@ -21,6 +21,8 @@ interface UseWalletERC20Balance{
 
 export const useWalletERC20Balance = (
     tokenAddress: string|undefined,
+    decimals?: string|number,
+    symbol?: string,
 ) : UseWalletERC20Balance => {
 
     const [bigNumberbalance,setBigNumberbalance] = useState<BigNumber|undefined>(undefined);
@@ -46,9 +48,10 @@ export const useWalletERC20Balance = (
     
                 // Use callStatic for read-only calls and handle errors gracefully
                 let balance: BigNumber = new BigNumber(0);
-                let decimals: BigNumber = new BigNumber(18); // Default to 18 decimals
-                let tokenSymbol: string = '';
+                let tokenDecimals: BigNumber = new BigNumber(decimals ? Number(decimals) : 18);
+                let tokenSymbol: string = symbol || '';
                 
+                // Only fetch balanceOf - use provided decimals and symbol if available
                 try {
                     const balanceBN = await contract.callStatic.balanceOf(account);
                     balance = new BigNumber(balanceBN.toString());
@@ -58,27 +61,33 @@ export const useWalletERC20Balance = (
                     balance = new BigNumber(0);
                 }
                 
-                try {
-                    const decimalsBN = await contract.callStatic.decimals();
-                    decimals = new BigNumber(decimalsBN.toString());
-                } catch (err: any) {
-                    console.warn(`Failed to get decimals for token ${tokenAddress}:`, err?.message);
-                    // Default to 18 decimals if call fails
-                    decimals = new BigNumber(18);
+                // Only fetch decimals if not provided
+                if (!decimals) {
+                    try {
+                        const decimalsBN = await contract.callStatic.decimals();
+                        tokenDecimals = new BigNumber(decimalsBN.toString());
+                    } catch (err: any) {
+                        console.warn(`Failed to get decimals for token ${tokenAddress}:`, err?.message);
+                        // Default to 18 decimals if call fails
+                        tokenDecimals = new BigNumber(18);
+                    }
                 }
                 
-                try {
-                    tokenSymbol = await contract.callStatic.symbol();
-                } catch (err: any) {
-                    console.warn(`Failed to get symbol for token ${tokenAddress}:`, err?.message);
-                    // Use address short form as fallback symbol
-                    tokenSymbol = tokenAddress ? `${tokenAddress.slice(0, 6).toUpperCase()}` : '';
+                // Only fetch symbol if not provided
+                if (!symbol) {
+                    try {
+                        tokenSymbol = await contract.callStatic.symbol();
+                    } catch (err: any) {
+                        console.warn(`Failed to get symbol for token ${tokenAddress}:`, err?.message);
+                        // Use address short form as fallback symbol
+                        tokenSymbol = tokenAddress ? `${tokenAddress.slice(0, 6).toUpperCase()}` : '';
+                    }
                 }
     
                 resolove({
                     balance: balance,
                     symbol: tokenSymbol,
-                    decimals: decimals.toString()
+                    decimals: tokenDecimals.toString()
                 })
                 
             }catch(err){
@@ -93,7 +102,7 @@ export const useWalletERC20Balance = (
         })
     }
 
-    const { data, refetch } = useQuery([tokenAddress], getTokenInfos, { enabled: (!!provider && !!tokenAddress && !!account)});
+    const { data, refetch } = useQuery([tokenAddress, decimals, symbol], getTokenInfos, { enabled: (!!provider && !!tokenAddress && !!account)});
 
     useEffect(() => {
         if(tokenAddress){
