@@ -678,6 +678,10 @@ const ViewOfferPage = () => {
                         type: offer.type,
                         buyCurrency: offer.buyCurrency,
                         propertyTokenAddress: propertyToken?.contractAddress,
+                        buyerTokenAddress: offer.buyerTokenAddress,
+                        offerTokenAddress: offer.offerTokenAddress,
+                        isBuyerTokenProperty: propertyToken?.contractAddress?.toLowerCase() === offer.buyerTokenAddress?.toLowerCase(),
+                        isOfferTokenProperty: propertyToken?.contractAddress?.toLowerCase() === offer.offerTokenAddress?.toLowerCase(),
                       });
 
                       // Calculate priceDelta using the same logic as getPriceDelta in parseOffer.ts
@@ -699,8 +703,46 @@ const ViewOfferPage = () => {
                           // For BUY: priceDelta = (1/price - officialPrice) / officialPrice
                           const tokenInDollar = 1 / parseFloat(offer.price);
                           priceDelta = (tokenInDollar - officialPrice) / officialPrice;
+                        } else if (offer.type === OFFER_TYPE.EXCHANGE && propertyToken) {
+                          // For EXCHANGE: Calculate offer price based on which token is the property token
+                          // The price field represents the exchange rate: how much buyerToken per 1 offerToken
+                          const priceBN = new BigNumber(offer.price);
+                          
+                          // Determine which token is the property token
+                          const isBuyerTokenProperty = propertyToken.contractAddress?.toLowerCase() === offer.buyerTokenAddress?.toLowerCase();
+                          const isOfferTokenProperty = propertyToken.contractAddress?.toLowerCase() === offer.offerTokenAddress?.toLowerCase();
+                          
+                          let offerPriceInDollar: number | undefined;
+                          
+                          if (isBuyerTokenProperty) {
+                            // Property token is buyerToken
+                            // Get the price of offerToken from prices
+                            const offerTokenPrice = parseFloat(prices[offer.offerTokenAddress?.toLowerCase()] || '0');
+                            if (offerTokenPrice > 0) {
+                              // offerPrice = offerTokenPrice * price (how much buyerToken you get per offerToken)
+                              // But we want buyerToken price, so: buyerTokenPrice = offerTokenPrice / price
+                              offerPriceInDollar = offerTokenPrice / priceBN.toNumber();
+                            }
+                          } else if (isOfferTokenProperty) {
+                            // Property token is offerToken
+                            // Get the price of buyerToken from prices
+                            const buyerTokenPrice = parseFloat(prices[offer.buyerTokenAddress?.toLowerCase()] || '0');
+                            if (buyerTokenPrice > 0) {
+                              // offerPrice = buyerTokenPrice * price (how much buyerToken per offerToken)
+                              offerPriceInDollar = buyerTokenPrice * priceBN.toNumber();
+                            }
+                          }
+                          
+                          // Calculate priceDelta if we have offerPriceInDollar
+                          if (offerPriceInDollar !== undefined && offerPriceInDollar > 0) {
+                            priceDelta = parseFloat(
+                              new BigNumber(offerPriceInDollar)
+                                .dividedBy(new BigNumber(officialPrice))
+                                .minus(1)
+                                .toString()
+                            );
+                          }
                         }
-                        // Note: EXCHANGE offers are not handled by getPriceDelta, so we skip them
                       }
 
                       // Only show if we have both valid values
