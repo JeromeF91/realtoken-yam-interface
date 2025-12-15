@@ -31,8 +31,8 @@ export const MarketTablePrivate: FC = () => {
   const [expanded, setExpanded] = useState<ExpandedState>({});
 
   // Component is only rendered when tab is active, so this will only fetch when needed
-  // Since the component only renders when the tab is active, we can always pass true
-  const { offers: privateOffers, offersAreLoading, refetch } = usePrivateOffers(true);
+  // The hook handles enabled state internally based on chainId, account, properties, etc.
+  const { offers: privateOffers, offersAreLoading, refetch } = usePrivateOffers();
   const { offers, sellCount, buyCount, exchangeCount } = useTypedOffers(privateOffers, offersAreLoading)
   const columns = useRightTableColumn(OFFERS_TYPE.PRIVATE);
 
