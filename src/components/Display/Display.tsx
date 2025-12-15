@@ -6,6 +6,8 @@ import { Displays } from "src/types/Displays";
 import { MarketTable } from "../Market";
 import { MarketGrid } from "../Market/MarketGrid/MarketGrid";
 import { MarketSort } from "../Market/MarketSort/MarketSort";
+import { usePublicOffers } from "../../hooks/offers/usePublicOffers";
+import { useTypedOffers } from "../../hooks/offers/useTypedOffers";
 
 interface Display{
   display: Displays
@@ -15,6 +17,10 @@ interface Display{
 const Display: FC = () => {
 
   const [choosenDisplay,setChoosenDisplay] = useAtom(displayChoosedAtom);
+  
+  // Get offers and counts for MarketSort
+  const { offers, offersAreLoading } = usePublicOffers();
+  const { sellCount, buyCount, exchangeCount } = useTypedOffers(offers, offersAreLoading);
 
   const availableDisplays = useMemo(() => {
     return new Map<Displays,Display>([
@@ -42,7 +48,11 @@ const Display: FC = () => {
   return(
     <>
       <Flex justify={"space-between"} mb={16}>
-        <MarketSort />
+        <MarketSort 
+          sellCount={sellCount}
+          buyCount={buyCount}
+          exchangeCount={exchangeCount}
+        />
         <Select
           data={datas}
           value={choosenDisplay}
