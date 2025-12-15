@@ -31,6 +31,7 @@ import { AvailableConnectors, ConnectorsDatas } from '@realtoken/realt-commons';
 import { useApproveOffer } from '../../../hooks/useApproveOffer';
 import { usePropertyToken } from 'src/hooks/usePropertyToken';
 import { usePropertiesToken } from 'src/hooks/usePropertiesToken';
+import { getPropertyTokenAddress } from 'src/utils/properties';
 
 type BuyModalWithPermitProps = {
   offer: Offer,
@@ -82,17 +83,23 @@ export const BuyModalWithPermit: FC<
   const { name:offerTokenName, symbol:offerTokenSymbol  } = useERC20TokenInfo(offer.offerTokenAddress);
   const { symbol:buyTokenSymbol, address:buyerTokenAddress } = useERC20TokenInfo(offer.buyerTokenAddress);
   
-  // Get property token info - when buying, the property token is buyerToken
-  // But since tokens are reversed, we need to check which one is actually the property token
-  // For a BUY offer type, the property token is in offerTokenAddress
-  // For a SELL offer type, the property token is in buyerTokenAddress
-  // Let's try both addresses to find the property token
-  const { propertyToken: buyerPropertyTokenFromBuyerToken } = usePropertyToken(offer.buyerTokenAddress);
-  const { propertyToken: buyerPropertyTokenFromOfferToken } = usePropertyToken(offer.offerTokenAddress);
+  // Get the correct property token address using the utility function
+  // This handles the logic for BUY vs SELL offer types
+  const propertyTokenAddress = getPropertyTokenAddress(offer);
+  
+  // Get property token info using the correct address
+  const { propertyToken: buyerPropertyToken } = usePropertyToken(propertyTokenAddress);
   const { propertiesIsloading } = usePropertiesToken();
   
-  // Use the property token from whichever address has it
-  const buyerPropertyToken = buyerPropertyTokenFromBuyerToken || buyerPropertyTokenFromOfferToken;
+  console.log('BuyModal: Property token lookup:', {
+    offerType: offer.type,
+    propertyTokenAddress,
+    buyerTokenAddress: offer.buyerTokenAddress,
+    offerTokenAddress: offer.offerTokenAddress,
+    sellerAddress: offer.sellerAddress,
+    foundPropertyToken: !!buyerPropertyToken,
+    propertyTokenShortName: buyerPropertyToken?.shortName,
+  });
   
   // Use property token short name if available, otherwise fall back to symbol
   const buyerTokenDisplayName = useMemo(() => {
