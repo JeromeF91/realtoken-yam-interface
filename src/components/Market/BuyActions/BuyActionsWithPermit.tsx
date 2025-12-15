@@ -65,18 +65,19 @@ export const BuyActionsWithPermit: FC<BuyActions> = ({
     });
   }, [modals, t]);
 
+  // Whitelisting check disabled temporarily - TheGraph subgraph not returning whitelist data
   const [tokenNotWhitelisted, setTokenNotWhitelisted] = useState<
     PropertiesToken[]
   >([]);
-  useEffect(() => {
-    if (!wlProperties || !buyOffer || !properties) return;
-    const notWlTokens = getNotWhitelistedTokens(
-      wlProperties,
-      buyOffer,
-      properties
-    );
-    setTokenNotWhitelisted(notWlTokens);
-  }, [wlProperties, buyOffer, properties]);
+  // useEffect(() => {
+  //   if (!wlProperties || !buyOffer || !properties) return;
+  //   const notWlTokens = getNotWhitelistedTokens(
+  //     wlProperties,
+  //     buyOffer,
+  //     properties
+  //   );
+  //   setTokenNotWhitelisted(notWlTokens);
+  // }, [wlProperties, buyOffer, properties]);
 
   const isAccountOffer = useMemo(() => {
     if (!buyOffer || !account) return false;
@@ -91,10 +92,10 @@ export const BuyActionsWithPermit: FC<BuyActions> = ({
   const [opened, setOpened] = useState(false);
   const hovered = useCallback(
     (state: boolean) => {
-      if (tokenNotWhitelisted.length > 0) setOpened(true);
+      // if (tokenNotWhitelisted.length > 0) setOpened(true);
       if (isAccountOffer) setOpened(true);
     },
-    [tokenNotWhitelisted, isAccountOffer]
+    [isAccountOffer]
   );
 
   return (
@@ -124,7 +125,7 @@ export const BuyActionsWithPermit: FC<BuyActions> = ({
                 }
                 className={buttonClassName ?? ''}
                 disabled={
-                  tokenNotWhitelisted.length > 0 || !buyOffer || cannotBuy
+                  /* tokenNotWhitelisted.length > 0 || */ !buyOffer || cannotBuy
                 }
               >
                 <IconShoppingCart size={16} aria-label={'Buy'} />
@@ -133,7 +134,8 @@ export const BuyActionsWithPermit: FC<BuyActions> = ({
             </Group>
           </Popover.Target>
           <Popover.Dropdown>
-            {tokenNotWhitelisted.length > 0 ? (
+            {/* Whitelisting check disabled temporarily */}
+            {/* {tokenNotWhitelisted.length > 0 ? (
               <>
                 <Text>{t1('notWhitelisted')}</Text>
                 <ul>
@@ -145,7 +147,7 @@ export const BuyActionsWithPermit: FC<BuyActions> = ({
                     ))}
                 </ul>
               </>
-            ) : isAccountOffer ? (
+            ) : */ isAccountOffer ? (
               <Text>{t1('cannotBuyYourOffer')}</Text>
             ) : undefined}
           </Popover.Dropdown>
