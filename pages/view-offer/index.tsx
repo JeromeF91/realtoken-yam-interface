@@ -129,44 +129,86 @@ const ViewOfferPage = () => {
           // Fetch property tokens for the offer
           const fetchedPropertyTokens: PropertiesToken[] = [];
           
-          // First, try to get from local properties cache
-          if (fetchedOffer.buyerTokenType === 1) {
-            const token = getPropertyToken(fetchedOffer.buyerTokenAddress);
-            if (token) {
-              fetchedPropertyTokens.push(token);
-            } else {
-              // If not found locally, try fetching from server-side API using the address
-              console.log(`Property not found locally for buyerToken ${fetchedOffer.buyerTokenAddress}, fetching from API...`);
-              try {
-                const response = await fetch(`/api/property/${effectiveChainId}/${fetchedOffer.buyerTokenAddress}`);
-                if (response.ok) {
-                  const apiToken = await response.json();
-                  fetchedPropertyTokens.push(apiToken);
-                  console.log(`Fetched property from API: ${apiToken.shortName}`);
-                }
-              } catch (error) {
-                console.warn(`Failed to fetch property from API for buyerToken ${fetchedOffer.buyerTokenAddress}:`, error);
+          console.log('Fetching property tokens:', {
+            buyerTokenAddress: fetchedOffer.buyerTokenAddress,
+            buyerTokenType: fetchedOffer.buyerTokenType,
+            offerTokenAddress: fetchedOffer.offerTokenAddress,
+            offerTokenType: fetchedOffer.offerTokenType,
+          });
+          
+          // Try to fetch property for buyerToken (even if type is not 1, as it might be a property token)
+          const buyerTokenProperty = getPropertyToken(fetchedOffer.buyerTokenAddress);
+          if (buyerTokenProperty) {
+            console.log(`Found buyerToken property in cache: ${buyerTokenProperty.shortName}`);
+            fetchedPropertyTokens.push(buyerTokenProperty);
+          } else if (fetchedOffer.buyerTokenType === 1) {
+            // If not found locally and type is 1, try fetching from server-side API
+            console.log(`Property not found locally for buyerToken ${fetchedOffer.buyerTokenAddress} (type ${fetchedOffer.buyerTokenType}), fetching from API...`);
+            try {
+              const response = await fetch(`/api/property/${effectiveChainId}/${fetchedOffer.buyerTokenAddress}`);
+              if (response.ok) {
+                const apiToken = await response.json();
+                fetchedPropertyTokens.push(apiToken);
+                console.log(`Fetched buyerToken property from API: ${apiToken.shortName}`);
+              } else {
+                console.warn(`API returned ${response.status} for buyerToken ${fetchedOffer.buyerTokenAddress}`);
               }
+            } catch (error) {
+              console.warn(`Failed to fetch property from API for buyerToken ${fetchedOffer.buyerTokenAddress}:`, error);
+            }
+          } else {
+            // Even if type is not 1, try fetching from API (might be a property token not registered correctly)
+            console.log(`Trying to fetch property for buyerToken ${fetchedOffer.buyerTokenAddress} even though type is ${fetchedOffer.buyerTokenType}...`);
+            try {
+              const response = await fetch(`/api/property/${effectiveChainId}/${fetchedOffer.buyerTokenAddress}`);
+              if (response.ok) {
+                const apiToken = await response.json();
+                fetchedPropertyTokens.push(apiToken);
+                console.log(`Fetched buyerToken property from API (non-type-1): ${apiToken.shortName}`);
+              }
+            } catch (error) {
+              // Silently fail - not all tokens are property tokens
             }
           }
           
-          if (fetchedOffer.offerTokenType === 1) {
-            const token = getPropertyToken(fetchedOffer.offerTokenAddress);
-            if (token) {
-              fetchedPropertyTokens.push(token);
-            } else {
-              // If not found locally, try fetching from server-side API using the address
-              console.log(`Property not found locally for offerToken ${fetchedOffer.offerTokenAddress}, fetching from API...`);
-              try {
-                const response = await fetch(`/api/property/${effectiveChainId}/${fetchedOffer.offerTokenAddress}`);
-                if (response.ok) {
-                  const apiToken = await response.json();
+          // Try to fetch property for offerToken (even if type is not 1, as it might be a property token)
+          const offerTokenProperty = getPropertyToken(fetchedOffer.offerTokenAddress);
+          if (offerTokenProperty) {
+            console.log(`Found offerToken property in cache: ${offerTokenProperty.shortName}`);
+            if (!fetchedPropertyTokens.find(t => t.contractAddress === offerTokenProperty.contractAddress)) {
+              fetchedPropertyTokens.push(offerTokenProperty);
+            }
+          } else if (fetchedOffer.offerTokenType === 1) {
+            // If not found locally and type is 1, try fetching from server-side API
+            console.log(`Property not found locally for offerToken ${fetchedOffer.offerTokenAddress} (type ${fetchedOffer.offerTokenType}), fetching from API...`);
+            try {
+              const response = await fetch(`/api/property/${effectiveChainId}/${fetchedOffer.offerTokenAddress}`);
+              if (response.ok) {
+                const apiToken = await response.json();
+                if (!fetchedPropertyTokens.find(t => t.contractAddress === apiToken.contractAddress)) {
                   fetchedPropertyTokens.push(apiToken);
-                  console.log(`Fetched property from API: ${apiToken.shortName}`);
+                  console.log(`Fetched offerToken property from API: ${apiToken.shortName}`);
                 }
-              } catch (error) {
-                console.warn(`Failed to fetch property from API for offerToken ${fetchedOffer.offerTokenAddress}:`, error);
+              } else {
+                console.warn(`API returned ${response.status} for offerToken ${fetchedOffer.offerTokenAddress}`);
               }
+            } catch (error) {
+              console.warn(`Failed to fetch property from API for offerToken ${fetchedOffer.offerTokenAddress}:`, error);
+            }
+          } else {
+            // Even if type is not 1, try fetching from API (might be a property token not registered correctly)
+            console.log(`Trying to fetch property for offerToken ${fetchedOffer.offerTokenAddress} even though type is ${fetchedOffer.offerTokenType}...`);
+            try {
+              const response = await fetch(`/api/property/${effectiveChainId}/${fetchedOffer.offerTokenAddress}`);
+              if (response.ok) {
+                const apiToken = await response.json();
+                if (!fetchedPropertyTokens.find(t => t.contractAddress === apiToken.contractAddress)) {
+                  fetchedPropertyTokens.push(apiToken);
+                  console.log(`Fetched offerToken property from API (non-type-1): ${apiToken.shortName}`);
+                }
+              }
+            } catch (error) {
+              // Silently fail - not all tokens are property tokens
             }
           }
           
