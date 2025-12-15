@@ -185,7 +185,8 @@ export const CreateOfferModal: FC<ContextModalProps<CreateOfferModalProps>> = ({
         provider,
         account
       );
-      const offerTokenDecimals = await offerToken?.decimals();
+      // Use callStatic for read-only call
+      const offerTokenDecimals = await offerToken?.callStatic.decimals();
 
       const buyerToken = getContract<CoinBridgeToken>(
         formValues.buyerTokenAddress,
@@ -193,7 +194,8 @@ export const CreateOfferModal: FC<ContextModalProps<CreateOfferModalProps>> = ({
         provider,
         account
       );
-      const buyerTokenDecimals = await buyerToken?.decimals();
+      // Use callStatic for read-only call
+      const buyerTokenDecimals = await buyerToken?.callStatic.decimals();
 
       const createdOffer: CreatedOffer = {
         offerType: offer.offerType,

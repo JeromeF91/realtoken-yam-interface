@@ -23,7 +23,8 @@ export const useCreatedOffer: UseCreatedOffer = (createdOffer) => {
     const [buyTokenSymbol,setBuyTokenSymbol] = useState<string|undefined>(undefined);
 
     const getTokenSymbol = async (contract: Contract, setSymbol: Dispatch<string>) => {
-        const symbol = await contract.symbol();
+        // Use callStatic for read-only call
+        const symbol = await contract.callStatic.symbol();
         setSymbol(symbol);
     }
 

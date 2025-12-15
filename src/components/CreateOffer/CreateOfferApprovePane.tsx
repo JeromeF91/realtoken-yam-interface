@@ -20,9 +20,8 @@ const checkNeedApprove = (amount: BigNumber, tokenAddress: string, provider: Web
         try{
             const contract = getContract<Erc20>(tokenAddress, Erc20ABI, provider);
             if(!contract) throw new Error('Contract not found');
-            const allowance = await contract.allowance(account, realTokenYamUpgradeable);
-            console.log(allowance.toString(), amount.toString(10));
-            console.log(new BigNumber(allowance.toString()).lt(amount).toString());
+            // Use callStatic for read-only call to avoid unnecessary RPC overhead
+            const allowance = await contract.callStatic.allowance(account, realTokenYamUpgradeable);
             resolve(new BigNumber(allowance.toString()).lt(amount));
         }catch(e){
             reject(e);
@@ -73,9 +72,11 @@ export const CreateOfferApprovePane = ({ tokenAddress, approval }: CreateOfferAp
     const [addApproval] = useRootStore(state => [state.addApproval]);
 
     const { data: needApprove, isLoading: checkIfApproveNeeded, refetch } = useQuery({
-        queryKey: ['need-approve', tokenAddress],
+        queryKey: ['need-approve', tokenAddress, approval?.amount],
         enabled: !!approval && !!provider && !!realTokenYamUpgradeable && !!account,
-        refetchInterval: 5000,
+        // Remove refetchInterval - only refetch when explicitly needed (e.g., after approval)
+        // This prevents excessive RPC calls every 5 seconds
+        staleTime: 30000, // Consider data fresh for 30 seconds
         queryFn: async () => {
             if(!provider || !realTokenYamUpgradeable || !account || !approval) return false;
 
@@ -86,7 +87,6 @@ export const CreateOfferApprovePane = ({ tokenAddress, approval }: CreateOfferAp
                 account,
                 realTokenYamUpgradeable.address
             );
-            console.log('needApprove: ',needApprove);
             addApproval(tokenAddress, !needApprove);
             return needApprove;
         }

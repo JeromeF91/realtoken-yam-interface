@@ -70,11 +70,11 @@ const approveOffer = (
         return;
       }
 
-      const oldAllowance = await offerToken.allowance(
+      // Use callStatic for read-only call
+      const oldAllowance = await offerToken.callStatic.allowance(
         account,
         realTokenYamUpgradeable.address
       );
-      console.log('oldAllowance: ', oldAllowance.toString());
 
       const amountInWeiToPermit = amountToApprove
         .plus(new BigNumber(oldAllowance.toString()))
@@ -407,7 +407,8 @@ export const CreateOffer = () => {
             account
           );
 
-          const buyerTokenDecimals = await buyerToken?.decimals();
+          // Use callStatic for read-only call
+          const buyerTokenDecimals = await buyerToken?.callStatic.decimals();
 
           if (!createdOffer.amount || !createdOffer.price) return;
 
