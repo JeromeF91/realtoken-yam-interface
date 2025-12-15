@@ -177,7 +177,7 @@ export const fetchPrivateOffersRpc = async (
                   let tokenType = 3; // Default to ERC20
                   try {
                     const tokenTypeBN = await yamContract.callStatic.getTokenType(tokenAddress);
-                    tokenType = tokenTypeBN.toNumber();
+                    tokenType = typeof tokenTypeBN === 'number' ? tokenTypeBN : (tokenTypeBN as any).toNumber();
                   } catch (e) {
                     console.warn(`Could not get tokenType for ${tokenName}, using default 3`);
                   }
