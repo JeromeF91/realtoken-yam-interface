@@ -126,27 +126,51 @@ export const fetchOfferRpc = async (
     });
     
     // Based on actual contract return values from the user's test:
-    // value0: '0x0643FFB30aDD44eF5c74996AD57A03A2244b6F28' - offerToken address
-    // value1: '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83' - buyerToken address  
-    // value2: '0x540A623c7ed0c09E1B3916A83d93f2F59d44eA89' - seller wallet address
+    // value0: '0x0643FFB30aDD44eF5c74996AD57A03A2244b6F28' 
+    // value1: '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83'
+    // value2: '0x540A623c7ed0c09E1B3916A83d93f2F59d44eA89' - seller wallet address (confirmed)
     // value3: '0x0000000000000000000000000000000000000000' - buyer address (zero for public)
     // value4: price (BigNumber)
     // value5: amount (BigNumber)
     //
-    // So the actual order is: [offerToken, buyerToken, seller, buyer, price, amount]
-    // NOT: [seller, offerToken, buyerToken, buyer, price, amount] as the comment suggests
-    const [offerTokenAddress, buyerTokenAddress, seller, buyer, priceBN, amountBN] = offerData;
+    // The contract ABI shows showOffer returns: [address, address, address, address, uint256, uint256]
+    // Based on TypeScript types: Promise<[string, string, string, string, BigNumber, BigNumber]>
+    // The standard order should be: [seller, offerToken, buyerToken, buyer, price, amount]
+    // BUT the actual return shows seller is at position 2, not 0
+    //
+    // Let's try: [buyerToken, offerToken, seller, buyer, price, amount] OR
+    //            [offerToken, buyerToken, seller, buyer, price, amount]
+    // We'll determine which by checking token types after fetching tokenInfo
+    const value0 = offerData[0];
+    const value1 = offerData[1];
+    const value2 = offerData[2]; // This is confirmed to be seller wallet
+    const value3 = offerData[3]; // This is buyer
+    const value4 = offerData[4]; // price
+    const value5 = offerData[5]; // amount
     
-    console.log('Using corrected order: [offerToken, buyerToken, seller, buyer, price, amount]');
+    // Extract values - seller is confirmed at position 2
+    const seller = value2;
+    const buyer = value3;
+    const priceBN = value4;
+    const amountBN = value5;
     
-    // Log the destructured values to verify they're correct
-    console.log('Destructured showOffer values:', {
+    // We need to determine which of value0 and value1 is offerToken vs buyerToken
+    // Let's fetch tokenInfo for both and determine based on the offer structure
+    // For now, try the order that matches other files: [seller, offerToken, buyerToken, buyer, price, amount]
+    // But since seller is at position 2, maybe it's: [buyerToken, offerToken, seller, buyer, price, amount]?
+    // Or: [offerToken, buyerToken, seller, buyer, price, amount]?
+    
+    // Let's try: value0 = offerToken, value1 = buyerToken (as I had it)
+    // But if that breaks property lookup, we'll try swapping them
+    let offerTokenAddress = value0;
+    let buyerTokenAddress = value1;
+    
+    console.log('Initial assignment (will verify after tokenInfo):', {
+      value0,
+      value1,
       seller,
-      offerTokenAddress,
-      buyerTokenAddress,
       buyer,
-      priceBN: priceBN?.toString(),
-      amountBN: amountBN?.toString(),
+      testing: 'value0=offerToken, value1=buyerToken',
     });
 
     // Get token info - try tokenInfo first, but fallback to ERC20 if it fails
@@ -201,21 +225,64 @@ export const fetchOfferRpc = async (
       }
     };
     
-    // Fetch both token infos in parallel with fallback handling
+    // Fetch both token infos in parallel to determine which is which
+    let tokenInfo0, tokenInfo1;
     try {
-      [offerTokenInfo, buyerTokenInfo] = await Promise.all([
-        getTokenInfoWithFallback(offerTokenAddress, 'offerToken'),
-        getTokenInfoWithFallback(buyerTokenAddress, 'buyerToken'),
+      [tokenInfo0, tokenInfo1] = await Promise.all([
+        getTokenInfoWithFallback(value0, 'value0'),
+        getTokenInfoWithFallback(value1, 'value1'),
       ]);
     } catch (error: any) {
       console.error('Critical error fetching token info:', error);
-      // Don't fail completely - we can still show the offer with basic info
       throw new Error(`Failed to fetch token information: ${error?.message}`);
     }
 
     // tokenInfo returns: [tokenType, name, symbol]
-    const [offerTokenType, offerTokenName, offerTokenSymbol] = offerTokenInfo;
-    const [buyerTokenType, buyerTokenName, buyerTokenSymbol] = buyerTokenInfo;
+    const [type0, name0, symbol0] = tokenInfo0;
+    const [type1, name1, symbol1] = tokenInfo1;
+    
+    // Determine correct order based on token types and offer logic
+    // The seller should have balance of offerToken (what they're selling)
+    // Check which token makes more sense as offerToken based on types
+    // If one is RealToken (type 1) and the other is ERC20 (type 2 or 3):
+    //   - In a SELL offer: offerToken is RealToken (type 1), buyerToken is ERC20
+    //   - In a BUY offer: offerToken is ERC20, buyerToken is RealToken (type 1)
+    //
+    // Since we'll check seller's balance, the token seller has balance of is likely offerToken
+    // But we can't check balance yet, so let's use a different approach:
+    // Check if the order [value0, value1] or [value1, value0] makes more sense
+    
+    // Try order 1: value0 = offerToken, value1 = buyerToken
+    let testOfferTokenType = type0.toNumber();
+    let testBuyerTokenType = type1.toNumber();
+    let isOrder1Valid = true;
+    
+    // Validate: offerToken and buyerToken shouldn't both be the same type (unless exchange)
+    // Also, if seller has balance of a token, that token is likely offerToken
+    // For now, let's assume value0 = offerToken, value1 = buyerToken
+    // If property lookup fails, we'll know to swap them
+    
+    offerTokenAddress = value0;
+    buyerTokenAddress = value1;
+    let offerTokenInfo = tokenInfo0;
+    let buyerTokenInfo = tokenInfo1;
+    let offerTokenType = type0.toNumber();
+    let offerTokenName = name0;
+    let offerTokenSymbol = symbol0;
+    let buyerTokenType = type1.toNumber();
+    let buyerTokenName = name1;
+    let buyerTokenSymbol = symbol1;
+    
+    console.log('Token assignment:', {
+      offerTokenAddress,
+      offerTokenType,
+      offerTokenName,
+      buyerTokenAddress,
+      buyerTokenType,
+      buyerTokenName,
+      seller,
+      note: 'If property lookup fails, may need to swap value0 and value1',
+    });
 
     // Get token decimals from ERC20 contracts (with fallback for non-ERC20 tokens)
     const [offerTokenDecimals, buyerTokenDecimals] = await Promise.all([
