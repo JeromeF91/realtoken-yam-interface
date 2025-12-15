@@ -1,17 +1,49 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flex, Tabs } from '@mantine/core';
 import { IconFingerprint, IconList, IconPlus } from '@tabler/icons';
+import { useQueryClient } from 'react-query';
+import { useWeb3React } from '@web3-react/core';
 import {
   MarketTablePrivate,
   MarketTableUser,
 } from 'src/components/Market/MarketTable';
 import { CreateOffer } from 'src/components/CreateOffer/CreateOffers';
 import { ConnectedProvider } from 'src/providers/ConnectProvider';
+import { mergeExtendedProperties } from 'src/utils/properties';
+import { getExtendedTokens } from 'src/constants/GetPriceToken';
 
 const TransfersPage = () => {
   const menu = useTranslation('menu', { keyPrefix: 'subMenuMyOffer' });
   const [activeTab, setActiveTab] = useState<string>('myOffers');
+  const queryClient = useQueryClient();
+  const { chainId } = useWeb3React();
+
+  // Prefetch properties when addOffer tab is active or about to be active
+  useEffect(() => {
+    if (!chainId) return;
+
+    // Prefetch properties API call
+    const prefetchProperties = async () => {
+      try {
+        const response = await fetch(`/api/properties/${chainId}`);
+        if (response.ok) {
+          const responseJson = await response.json();
+          const mergedProperties = mergeExtendedProperties(responseJson, getExtendedTokens(chainId));
+          
+          // Prefetch into React Query cache
+          queryClient.setQueryData(['properties', chainId], mergedProperties);
+        }
+      } catch (error) {
+        console.error('Error prefetching properties:', error);
+      }
+    };
+
+    // Prefetch when addOffer tab is active or when hovering over it
+    if (activeTab === 'addOffer') {
+      prefetchProperties();
+    }
+  }, [activeTab, chainId, queryClient]);
   
   return (
     <ConnectedProvider>
