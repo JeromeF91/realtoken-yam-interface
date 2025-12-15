@@ -5,11 +5,11 @@ import { UserBalances } from "../../types/UserBalance";
 import { fetchUserBalancesRpc } from "../../utils/rpc/fetchUserBalancesRpc";
 import { useProperties } from "./useProperties";
 
-type UseUserBalance = () => {
+type UseUserBalance = (enabled?: boolean) => {
     userBalancesAreLoading: boolean;
     userBalances: UserBalances;
 }
-export const useUserBalance: UseUserBalance = () => {
+export const useUserBalance: UseUserBalance = (enabled = true) => {
 
     const { chainId, account } = useWeb3React();
     const { properties } = useProperties();
@@ -17,7 +17,7 @@ export const useUserBalance: UseUserBalance = () => {
     const { isLoading: userBalancesAreLoading, data: userBalances, isSuccess } = useQuery({
         queryKey: ['userBalances', chainId, account, properties?.length],
         meta: { errCode: REACT_QUERY_ERRORS.FETCH_USER_BALANCES },
-        enabled: !!chainId && !!account && !!properties && properties.length > 0,
+        enabled: enabled && !!chainId && !!account && !!properties && properties.length > 0,
         queryFn: async (): Promise<UserBalances> => {
             if(!chainId || !account || !properties) return {};
             

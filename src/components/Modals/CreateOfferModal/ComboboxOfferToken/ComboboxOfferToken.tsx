@@ -30,7 +30,8 @@ export type DataWithBalance = ComboboxItem & {
 const ComboboxOfferTokenOption = ({ item }: { item: DataWithBalance }) => {
   const { value, balance, label, selected } = item;
 
-  const { userBalancesAreLoading } = useUserBalance();
+  // Don't fetch balances here - they're passed from parent
+  const userBalancesAreLoading = false;
 
   // Only show balance if this is the selected token (for 'others' type, balances are only fetched for selected token)
   const showBalance = selected && balance && !balance.isZero();
@@ -85,16 +86,19 @@ export const ComboboxOfferToken = ({
   const { t } = useTranslation('modals', { keyPrefix: 'sell' });
 
 
+  // Only fetch real token balances when a token is selected or dropdown is opened
+  const [shouldFetchRealTokenBalances, setShouldFetchRealTokenBalances] = useState<boolean>(false);
+  
   const {
     userBalances: realTokenUserBalances,
     userBalancesAreLoading: realTokenUserBalancesAreLoading,
-  } = useUserBalance();
+  } = useUserBalance(shouldFetchRealTokenBalances);
 
   const [assetsBalances, setAssetsBalances] = useState<any>({});
   const [assetsBalancesAreLoading, setAssetsBalancesAreLoading] =
     useState<boolean>(false);
   
-  // Fetch balance for a single selected token only
+  // Fetch balance for a single selected token only (for 'others' type)
   const fetchTokenBalance = async (tokenAddress: string) => {
     if (!provider || !account || !tokenAddress || type !== 'others') {
       return;
@@ -145,15 +149,28 @@ export const ComboboxOfferToken = ({
   
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
+    onDropdownOpen: () => {
+      // Enable real token balance fetching when dropdown opens (lazy loading)
+      if (type === 'realtoken' && !shouldFetchRealTokenBalances) {
+        setShouldFetchRealTokenBalances(true);
+      }
+    },
   });
   
   // Fetch balance when a token is selected
   useEffect(() => {
-    if (value && type === 'others' && provider && account) {
-      const tokenKey = value.toLowerCase();
-      // Only fetch if not already cached
-      if (!assetsBalances[tokenKey]) {
-        fetchTokenBalance(value);
+    if (value && provider && account) {
+      if (type === 'others') {
+        const tokenKey = value.toLowerCase();
+        // Only fetch if not already cached
+        if (!assetsBalances[tokenKey]) {
+          fetchTokenBalance(value);
+        }
+      } else if (type === 'realtoken') {
+        // Enable real token balance fetching when a token is selected
+        if (!shouldFetchRealTokenBalances) {
+          setShouldFetchRealTokenBalances(true);
+        }
       }
     }
   }, [value, type, provider, account]);
@@ -166,7 +183,7 @@ export const ComboboxOfferToken = ({
     }
   }, [
     realTokenUserBalances,
-    realTokenUserBalances,
+    realTokenUserBalancesAreLoading,
     type,
     assetsBalances,
     assetsBalancesAreLoading,
