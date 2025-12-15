@@ -170,39 +170,8 @@ const ViewOfferPage = () => {
             }
           }
           
-          // Also try to fetch property using the seller address (which is actually the token address/UUID)
-          // This is important because the seller address is the token contract address
-          if (fetchedOffer.sellerAddress && fetchedOffer.sellerAddress !== '0x0000000000000000000000000000000000000000') {
-            const tokenBySeller = getPropertyToken(fetchedOffer.sellerAddress);
-            if (tokenBySeller) {
-              // Found in local cache
-              if (!fetchedPropertyTokens.find(t => t.contractAddress === tokenBySeller.contractAddress)) {
-                fetchedPropertyTokens.push(tokenBySeller);
-                console.log(`Found property in cache using seller address: ${tokenBySeller.shortName}`);
-              }
-            } else {
-              // Try fetching from server-side API using the seller address (token contract address)
-              console.log(`Trying to fetch property from API using seller address (token UUID): ${fetchedOffer.sellerAddress}`);
-              try {
-                const response = await fetch(`/api/property/${effectiveChainId}/${fetchedOffer.sellerAddress}`);
-                if (response.ok) {
-                  const apiToken = await response.json();
-                  if (!fetchedPropertyTokens.find(t => t.contractAddress === apiToken.contractAddress)) {
-                    fetchedPropertyTokens.push(apiToken);
-                    console.log(`Fetched property from API using seller address: ${apiToken.shortName}`, {
-                      annualYield: apiToken.annualYield,
-                      officialPrice: apiToken.officialPrice,
-                      currency: apiToken.currency,
-                    });
-                  }
-                } else {
-                  console.warn(`Could not fetch property from API for address: ${fetchedOffer.sellerAddress}`);
-                }
-              } catch (error) {
-                console.warn(`Failed to fetch property from API for seller address ${fetchedOffer.sellerAddress}:`, error);
-              }
-            }
-          }
+          // Note: sellerAddress is the wallet address, not a token contract address
+          // We should only use offerTokenAddress and buyerTokenAddress for property lookups
           
           console.log(`Total property tokens found: ${fetchedPropertyTokens.length}`, {
             tokens: fetchedPropertyTokens.map(t => ({
