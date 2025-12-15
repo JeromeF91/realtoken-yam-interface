@@ -194,7 +194,8 @@ export const BuyModalWithPermit: FC<
               </Flex>
               <Flex direction={"column"}>
                   <Text fw={700}>{offer.type ? priceTranslation.get(offer.type) : ""}</Text>
-                  <Text>{`${offer.price} ${buyTokenSymbol}`}</Text>
+                  {/* When buying, you pay with offerToken, so price should be shown in offerToken */}
+                  <Text>{`${offer.price} ${offerTokenSymbol}`}</Text>
               </Flex>
           </Flex>
         </Flex>
@@ -222,7 +223,8 @@ export const BuyModalWithPermit: FC<
 
             <Text size={"xl"}>{t("summary")}</Text>
             <Text size={"md"} mb={10}>
-              {` ${t("summaryText1")} ${values?.amount} ${offerTokenSymbol} ${t("summaryText2")} ${cleanNumber(values?.price)} ${buyTokenSymbol} ${t("summaryText3")} ${total} ${buyTokenSymbol}`}
+              {/* When buying, you pay with offerToken, so price should be shown in offerToken */}
+              {` ${t("summaryText1")} ${values?.amount} ${offerTokenSymbol} ${t("summaryText2")} ${cleanNumber(values?.price)} ${offerTokenSymbol} ${t("summaryText3")} ${total} ${offerTokenSymbol}`}
             </Text>
             
             {values.amount > 0 ? (
