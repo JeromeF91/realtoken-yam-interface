@@ -30,6 +30,7 @@ import { Erc20, Erc20ABI } from '../../../abis';
 import { AvailableConnectors, ConnectorsDatas } from '@realtoken/realt-commons';
 import { useApproveOffer } from '../../../hooks/useApproveOffer';
 import { usePropertyToken } from 'src/hooks/usePropertyToken';
+import { usePropertiesToken } from 'src/hooks/usePropertiesToken';
 
 type BuyModalWithPermitProps = {
   offer: Offer,
@@ -83,28 +84,50 @@ export const BuyModalWithPermit: FC<
   
   // Get property token info for buyerToken (what you're buying)
   const { propertyToken: buyerPropertyToken } = usePropertyToken(offer.buyerTokenAddress);
+  const { propertiesIsloading } = usePropertiesToken();
   
   // Use property token short name if available, otherwise fall back to symbol
   const buyerTokenDisplayName = useMemo(() => {
+    // First priority: property token short name
     if (buyerPropertyToken?.shortName) {
-      console.log('BuyModal: Using property token short name:', buyerPropertyToken.shortName);
+      console.log('BuyModal: Using property token short name:', buyerPropertyToken.shortName, 'for address:', offer.buyerTokenAddress);
       return buyerPropertyToken.shortName;
     }
-    if (buyTokenSymbol && buyTokenSymbol !== '0X7FBB' && !buyTokenSymbol.startsWith('0x')) {
+    
+    // Second priority: buyTokenSymbol if it's not an address-like value
+    if (buyTokenSymbol && 
+        buyTokenSymbol !== '0X7FBB' && 
+        !buyTokenSymbol.match(/^0x[a-fA-F0-9]{4,}$/i) && 
+        buyTokenSymbol.length < 20) {
       console.log('BuyModal: Using buyTokenSymbol:', buyTokenSymbol);
       return buyTokenSymbol;
     }
-    if (offer.buyerTokenName && offer.buyerTokenName !== '0X7FBB' && !offer.buyerTokenName.startsWith('0x')) {
+    
+    // Third priority: buyerTokenName if it's not an address-like value
+    if (offer.buyerTokenName && 
+        offer.buyerTokenName !== '0X7FBB' && 
+        !offer.buyerTokenName.match(/^0x[a-fA-F0-9]{4,}$/i) && 
+        offer.buyerTokenName.length < 20) {
       console.log('BuyModal: Using buyerTokenName:', offer.buyerTokenName);
       return offer.buyerTokenName;
     }
-    console.log('BuyModal: Property token not found, buyerTokenAddress:', offer.buyerTokenAddress);
-    console.log('BuyModal: buyerPropertyToken:', buyerPropertyToken);
-    console.log('BuyModal: buyTokenSymbol:', buyTokenSymbol);
-    console.log('BuyModal: buyerTokenName:', offer.buyerTokenName);
-    // Last resort: return a formatted address
-    return `${offer.buyerTokenAddress.slice(0, 6)}...${offer.buyerTokenAddress.slice(-4)}`;
-  }, [buyerPropertyToken, buyTokenSymbol, offer.buyerTokenAddress, offer.buyerTokenName]);
+    
+    // Debug logging
+    console.log('BuyModal: Property token lookup failed');
+    console.log('  - buyerTokenAddress:', offer.buyerTokenAddress);
+    console.log('  - buyerPropertyToken:', buyerPropertyToken);
+    console.log('  - propertiesIsloading:', propertiesIsloading);
+    console.log('  - buyTokenSymbol:', buyTokenSymbol);
+    console.log('  - buyerTokenName:', offer.buyerTokenName);
+    
+    // Last resort: return a formatted address (but only if properties have loaded)
+    if (!propertiesIsloading) {
+      return `${offer.buyerTokenAddress.slice(0, 6)}...${offer.buyerTokenAddress.slice(-4)}`;
+    }
+    
+    // While loading, show a placeholder
+    return buyTokenSymbol || 'Loading...';
+  }, [buyerPropertyToken, buyTokenSymbol, offer.buyerTokenAddress, offer.buyerTokenName, propertiesIsloading]);
   
   const realTokenYamUpgradeable = useContract(
     ContractsID.realTokenYamUpgradeable
