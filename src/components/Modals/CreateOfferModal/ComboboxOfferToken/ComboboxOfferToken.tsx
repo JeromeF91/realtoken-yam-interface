@@ -32,6 +32,9 @@ const ComboboxOfferTokenOption = ({ item }: { item: DataWithBalance }) => {
 
   const { userBalancesAreLoading } = useUserBalance();
 
+  // Only show balance if this is the selected token (for 'others' type, balances are only fetched for selected token)
+  const showBalance = selected && balance && !balance.isZero();
+
   return (
     <Combobox.Option value={value}>
       <Flex justify={'space-between'} align={'center'}>
@@ -42,15 +45,15 @@ const ComboboxOfferTokenOption = ({ item }: { item: DataWithBalance }) => {
               {label}
             </Text>
           </Flex>
-          {!userBalancesAreLoading ? (
+          {showBalance && !userBalancesAreLoading ? (
             <Text size='sm' c={'gray'}>
               {balance.toString(10)}
             </Text>
-          ) : (
+          ) : selected && userBalancesAreLoading ? (
             <Skeleton width={200} height={15} />
-          )}
+          ) : undefined}
         </Flex>
-        {userBalancesAreLoading ? <Loader size={18} /> : undefined}
+        {selected && userBalancesAreLoading ? <Loader size={18} /> : undefined}
       </Flex>
     </Combobox.Option>
   );
@@ -90,69 +93,65 @@ export const ComboboxOfferToken = ({
   const [assetsBalances, setAssetsBalances] = useState<any>({});
   const [assetsBalancesAreLoading, setAssetsBalancesAreLoading] =
     useState<boolean>(false);
-  const [hasFetchedBalances, setHasFetchedBalances] = useState<boolean>(false);
   
-  const fetchBalances = async () => {
-    // Don't fetch if already fetched or if no data
-    if (hasFetchedBalances || !data || data.length === 0) {
+  // Fetch balance for a single selected token only
+  const fetchTokenBalance = async (tokenAddress: string) => {
+    if (!provider || !account || !tokenAddress || type !== 'others') {
+      return;
+    }
+    
+    const tokenKey = tokenAddress.toLowerCase();
+    
+    // Don't fetch if already cached
+    if (assetsBalances[tokenKey]) {
       return;
     }
     
     try {
       setAssetsBalancesAreLoading(true);
 
-      const assetsBalance = await Promise.all(
-        data.map(async (item) => {
-          if (!provider || !account || !item.value) return {};
-          try {
-            const contract = getContract<Erc20>(
-              item.value ?? '',
-              Erc20ABI,
-              provider,
-              account
-            );
-            if (!contract) return {};
-            // Use callStatic for read-only calls
-            const decimals = new BigNumber(
-              (await contract.callStatic.decimals()).toString()
-            );
-            const balance = new BigNumber(
-              (await contract.callStatic.balanceOf(account)).toString()
-            ).shiftedBy(-decimals.toNumber());
-            return { [item.value.toLowerCase()]: balance };
-          } catch (err) {
-            // Silently handle errors for individual tokens
-            return {};
-          }
-        })
+      const contract = getContract<Erc20>(
+        tokenAddress,
+        Erc20ABI,
+        provider,
+        account
       );
-
-      const assets: { [addr: string]: BigNumber } = {};
-      assetsBalance.forEach((item) => {
-        Object.keys(item).forEach((key) => {
-          assets[key] = item[key];
-        });
-      });
-
-      setAssetsBalances(assets);
-      setHasFetchedBalances(true);
+      
+      if (!contract) {
+        setAssetsBalancesAreLoading(false);
+        return;
+      }
+      
+      // Use callStatic for read-only calls
+      const decimals = new BigNumber(
+        (await contract.callStatic.decimals()).toString()
+      );
+      const balance = new BigNumber(
+        (await contract.callStatic.balanceOf(account)).toString()
+      ).shiftedBy(-decimals.toNumber());
+      
+      setAssetsBalances((prev: any) => ({
+        ...prev,
+        [tokenKey]: balance,
+      }));
+      
       setAssetsBalancesAreLoading(false);
     } catch (err) {
-      console.error(err);
+      console.error(`Error fetching balance for token ${tokenAddress}:`, err);
       setAssetsBalancesAreLoading(false);
     }
   };
   
-  // Only fetch balances when dropdown is opened, not on mount
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
-    onDropdownOpen: () => {
-      // Fetch balances when dropdown opens (lazy loading)
-      if (type === 'others' && !hasFetchedBalances) {
-        fetchBalances();
-      }
-    },
   });
+  
+  // Fetch balance when a token is selected
+  useEffect(() => {
+    if (value && type === 'others') {
+      fetchTokenBalance(value);
+    }
+  }, [value, type]);
 
   const [userBalances, userBalancesAreLoading] = useMemo(() => {
     if (type == 'realtoken') {
@@ -214,6 +213,10 @@ export const ComboboxOfferToken = ({
         onChange(val);
         combobox.closeDropdown();
         setSearchTerm('');
+        // Fetch balance for the selected token
+        if (type === 'others' && val) {
+          fetchTokenBalance(val);
+        }
       }}
       disabled={disabled}
     >
