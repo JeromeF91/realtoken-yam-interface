@@ -4,10 +4,17 @@ After=network.target
 
 [Service]
 Type=simple
+# Change 'www-data' to your Linux username (run 'whoami' to find it)
 User=www-data
+# Change this to the full path where you cloned the repository
+# Example: /home/username/realtoken-yam-interface or /var/www/realtoken-yam-interface
 WorkingDirectory=/path/to/realtoken-yam-interface
 Environment=NODE_ENV=production
 Environment=PORT=3000
+# Use 'which npm' to find the correct path, common paths:
+# - /usr/bin/npm (if installed via package manager)
+# - /usr/local/bin/npm (if installed via nvm or manual install)
+# - /home/username/.nvm/versions/node/v20.x.x/bin/npm (if using nvm)
 ExecStart=/usr/bin/npm start
 Restart=always
 RestartSec=10
